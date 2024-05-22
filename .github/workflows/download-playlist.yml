@@ -1,0 +1,66 @@
+name: download-playlist
+
+on:
+  workflow_call:
+    inputs:
+      PLAYLIST:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  download-playlist:
+    name: download (${{ inputs.PLAYLIST }})
+    runs-on: ubuntu-latest
+    steps:
+
+      -
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      -
+        name: Parse playlist data
+        id: playlist-data
+        run: |
+          # Parse playlist data
+          echo "name=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo "playlist-id=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].playlist_id' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+
+      -
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip' # caching pip dependencies
+
+      -
+        name: Install python modules
+        run: pip install -r requirements.txt
+
+      -
+        name: Create .audiocache directory
+        run: mkdir .audiocache
+
+      # - name: Cache git lfs
+      #   uses: actions/cache@v1.1.0
+      #   with:
+      #     path: .git/lfs
+      #     key: ${{ hashFiles('**/*.zip') }}
+
+      # - name: Download playlist
+      #   working-directory: .audiocache
+      #   env:
+      #     PLAYLIST_ID: ${{ steps.playlist-data.outputs.playlist-id }}
+      #   run: |
+      #     spotdl \
+      #       --output "{list-position}.{output-ext}" \
+      #       --format wav \
+      #       "https://open.spotify.com/playlist/${PLAYLIST_ID}"
+
