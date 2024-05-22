@@ -84,7 +84,7 @@ jobs:
         run: |
           # Generate video
           mkdir -p "$(dirname $OUTPUT_FILE)"
-          rm "$OUTPUT_FILE.mp4"
+          rm "$OUTPUT_FILE"
 
           ./video-generator/generate.sh
 
