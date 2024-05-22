@@ -13,6 +13,9 @@ defaults:
   run:
     shell: bash
 
+concurrency:
+  group: ${{ github.workflow }}
+
 jobs:
 
   setup:
