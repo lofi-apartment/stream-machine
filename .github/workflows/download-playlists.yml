@@ -27,7 +27,7 @@ jobs:
         id: list-playlists
         run: |
           # List playlists
-          echo "playlists=\'$(yq '.playlists | keys' -o=json --indent=0 playlists.yml)\'" | tee -a "$GITHUB_OUTPUT"
+          echo "playlists='$(yq '.playlists | keys' -o=json --indent=0 playlists.yml)'" | tee -a "$GITHUB_OUTPUT"
 
   download-playlists:
     needs: [setup]
