@@ -11,8 +11,8 @@ validate-inputs () {
     elif [[ -z "$BG_FILE" ]]; then
         echo "Command failed: BG_FILE unset"
         exit 1
-    elif [[ -z "$OUTPUT_PATH" ]]; then
-        echo "Command failed: BG_FILE unset"
+    elif [[ -z "$OUTPUT_FILE" ]]; then
+        echo "Command failed: OUTPUT_FILE unset"
         exit 1
     elif [[ -z "$REGULAR_FONT" ]]; then
         echo "Command failed: REGULAR_FONT unset"
@@ -25,12 +25,12 @@ validate-inputs () {
 
 setuptmp () {
     EPOCH=$(date +%s)
-    TMP="$OUTPUT_PATH/tmp-$EPOCH"
+    TMP="$(dirname $OUTPUT_FILE)/tmp-$EPOCH"
     mkdir -p "$TMP"
 }
 
 cleanuptmp () {
-    find $OUTPUT_PATH -path '*/tmp-*' -delete
+    find $(dirname $OUTPUT_FILE) -path '*/tmp-*' -delete
     exit
 }
 
@@ -226,7 +226,7 @@ add-audio () {
         -i "$TMP/video.mp4" -i "${audiofile}" \
         -c:v copy \
         -map 0:v -map 1:a \
-        -y "$OUTPUT_PATH/lofi.mp4"
+        -y "$OUTPUT_FILE"
 
     MINS=$(( SECONDS / 60 ))
     MINS=$(printf '%.1f' "$MINS")

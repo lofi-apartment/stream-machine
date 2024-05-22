@@ -2,9 +2,12 @@ playlists:
   kitchen:
     name: lofi kitchen
     playlist_id: 2GpaFr9EAre4dI8TU6bpHo
+    bg_file: purple-city-night.jpg
   living-room:
     name: lofi living room
     playlist_id: 1wNkJ6KD6bx7S4BUN5azdo
+    bg_file: purple-city-night.jpg
   balcony:
     name: lofi balcony
     playlist_id: 0YnUwWuhxUl5wDx23P63w9
+    bg_file: purple-city-night.jpg
