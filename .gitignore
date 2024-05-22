@@ -5,3 +5,7 @@ node_modules/
 venv/
 __pycache__/
 .spotdl/
+
+playlists/**/*.wav
+playlists/**/*.mp3
+playlists/**/*.mp4
