@@ -23,7 +23,7 @@ run_stream () {
         -acodec aac \
         -vcodec libx264 \
         -preset ultrafast \
-        -crf 28 \
+        -tune stillimage \
         -threads 4 \
         -f flv \
         "rtmp://a.rtmp.youtube.com/live2/$YOUTUBE_STREAM_KEY"
