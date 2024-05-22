@@ -34,6 +34,10 @@ jobs:
           echo "playlist-id=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].playlist_id' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
       -
+        name: Install ffmpeg
+        uses: federicocarboni/setup-ffmpeg@v3.1
+
+      -
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
@@ -47,19 +51,29 @@ jobs:
         name: Create .audiocache directory
         run: mkdir .audiocache
 
-      # - name: Cache git lfs
-      #   uses: actions/cache@v1.1.0
-      #   with:
-      #     path: .git/lfs
-      #     key: ${{ hashFiles('**/*.zip') }}
+      -
+        name: Restore .audiocache from cache
+        uses: actions/cache/restore@v3
+        with:
+          path: .audiocache
+          key: ${{ inputs.PLAYLIST }}
 
-      # - name: Download playlist
-      #   working-directory: .audiocache
-      #   env:
-      #     PLAYLIST_ID: ${{ steps.playlist-data.outputs.playlist-id }}
-      #   run: |
-      #     spotdl \
-      #       --output "{list-position}.{output-ext}" \
-      #       --format wav \
-      #       "https://open.spotify.com/playlist/${PLAYLIST_ID}"
+      -
+        name: Sync playlist
+        working-directory: .audiocache
+        env:
+          PLAYLIST_ID: ${{ steps.playlist-data.outputs.playlist-id }}
+        run: |
+          spotdl \
+            --output "{list-position}.{output-ext}" \
+            --format wav \
+            --save-file save.spotdl \
+            sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
+
+      -
+        name: Cache .audiocache
+        uses: actions/cache@v4
+        with:
+          path: .audiocache
+          key: ${{ inputs.PLAYLIST }}
 
