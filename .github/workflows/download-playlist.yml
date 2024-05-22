@@ -52,21 +52,28 @@ jobs:
         run: mkdir .audiocache
 
       -
-        name: Cache .audiocache
-        uses: actions/cache@v4
+        name: Restore .audiocache from cache
+        uses: actions/cache/restore@v3
         with:
           path: .audiocache
           key: ${{ inputs.PLAYLIST }}
 
-      -
-        name: Sync playlist
+      - name: Sync playlist
         working-directory: .audiocache
         env:
           PLAYLIST_ID: ${{ steps.playlist-data.outputs.playlist-id }}
         run: |
+          # spotdl playlist sync: https://spotdl.readthedocs.io/en/latest/usage/#syncing
           spotdl \
             --output "{list-position}.{output-ext}" \
             --format wav \
             --save-file save.spotdl \
             sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
+
+      -
+        name: Cache .audiocache
+        uses: actions/cache/save@v3
+        with:
+          path: .audiocache
+          key: ${{ inputs.PLAYLIST }}
 
