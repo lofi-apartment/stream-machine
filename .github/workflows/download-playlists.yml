@@ -2,8 +2,8 @@ name: download-playlists
 
 on:
   pull_request:
-    branches:
-      - 'download/**'
+    paths:
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
