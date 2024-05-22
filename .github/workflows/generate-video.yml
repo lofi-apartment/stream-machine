@@ -40,7 +40,7 @@ jobs:
       -
         name: Validate playlist exists
         run: |
-          if [[ "$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' )" == "null" ]]; then
+          if [[ "$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" == "null" ]]; then
             echo "::error::Unrecognized playlist: '${{ inputs.PLAYLIST }}'"
             exit 1
           fi
