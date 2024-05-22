@@ -3,7 +3,7 @@ name: download-playlists
 on:
   pull_request:
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/download-play*.yml'
   workflow_dispatch:
 
 permissions:
