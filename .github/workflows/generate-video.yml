@@ -31,12 +31,16 @@ jobs:
       -
         uses: actions/checkout@v4
         with:
+          lfs: true
           token: ${{ secrets.GH_PAT }}
+
+      -
+        run: git lfs pull
 
       -
         name: Validate playlist exists
         run: |
-          if [[ "$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name')" == "null" ]]; then
+          if [[ "$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' )" == "null" ]]; then
             echo "::error::Unrecognized playlist: '${{ inputs.PLAYLIST }}'"
             exit 1
           fi
@@ -76,9 +80,20 @@ jobs:
         env:
           AUDIOS_PATH: .audiocache
           BG_FILE: bg/${{ steps.playlist-data.outputs.bg-file }}
-          OUTPUTS_PATH: out
+          OUTPUT_FILE: out/${{ inputs.PLAYLIST }}.mp4
         run: |
           # Generate video
           mkdir -p "$OUTPUTS_PATH"
+          rm "$OUTPUT_FILE.mp4"
 
+          ./video-generator/generate.sh
 
+      -
+        name: Open PR to add video
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GH_PAT }}
+          add-paths: out
+          branch: video/${{ github.run_id }}/${{ inputs.PLAYLIST }}
+          title: Re-generate ${{ inputs.PLAYLIST }}.mp4
+          body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
