@@ -56,23 +56,15 @@ jobs:
           echo "bg-file=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].bg_file' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
       -
-        name: Restore .audiocache from cache
-        uses: actions/cache/restore@v3
-        with:
-          path: .audiocache
-          key: ${{ inputs.PLAYLIST }}
-          fail-on-cache-miss: true
-
-      -
         name: Install ffmpeg
         uses: federicocarboni/setup-ffmpeg@v3.1
 
       -
         name: Generate video
         env:
-          AUDIOS_PATH: .audiocache
+          AUDIOS_PATH: playlists/${{ inputs.PLAYLIST }}/audio
           BG_FILE: bg/${{ steps.playlist-data.outputs.bg-file }}
-          OUTPUT_FILE: out/${{ inputs.PLAYLIST }}.mp4
+          OUTPUT_FILE: playlists/${{ inputs.PLAYLIST }}/video/${{ inputs.PLAYLIST }}.mp4
         run: |
           # Generate video
           mkdir -p "$(dirname $OUTPUT_FILE)"
@@ -84,7 +76,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GH_PAT }}
-          add-paths: out
+          add-paths: playlists/${{ inputs.PLAYLIST }}/video
           branch: video/${{ github.run_id }}/${{ inputs.PLAYLIST }}
           title: Re-generate ${{ inputs.PLAYLIST }}.mp4
           body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
