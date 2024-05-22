@@ -1,9 +1,9 @@
-name: download-playlists
+name: sync-playlists
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/download-play*.yml'
+      - '.github/workflows/sync-play*.yml'
   workflow_dispatch:
 
 permissions:
@@ -35,12 +35,13 @@ jobs:
           # List playlists
           echo "playlists=$(yq '.playlists | keys' -o=json --indent=0 playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
-  download-playlists:
+  sync-playlists:
     name: download (${{ matrix.playlist }})
     needs: [setup]
-    uses: ./.github/workflows/download-playlist.yml
+    uses: ./.github/workflows/sync-playlist.yml
     with:
       PLAYLIST: ${{ matrix.playlist }}
+    secrets: inherit
     if: needs.setup.outputs.playlists != '[]'
     strategy:
       matrix:

@@ -1,10 +1,13 @@
-name: download-playlist
+name: sync-playlist
 
 on:
   workflow_call:
     inputs:
       PLAYLIST:
         type: string
+        required: true
+    secrets:
+      GH_PAT:
         required: true
 
 permissions:
@@ -16,12 +19,15 @@ defaults:
 
 jobs:
 
-  download:
+  sync:
     runs-on: ubuntu-latest
     steps:
 
       -
         uses: actions/checkout@v4
+        with:
+          lfs: true
+          token: ${{ secrets.GH_PAT }}
 
       -
         name: Validate playlist exists
@@ -54,18 +60,11 @@ jobs:
         run: pip install -r requirements.txt
 
       -
-        name: Create .audiocache directory
-        run: mkdir .audiocache
-
-      -
-        name: Restore .audiocache from cache
-        uses: actions/cache/restore@v3
-        with:
-          path: .audiocache
-          key: ${{ inputs.PLAYLIST }}
+        name: Create audio directory
+        run: mkdir -p "playlists/${{ inputs.PLAYLIST }}/audio"
 
       - name: Sync playlist
-        working-directory: .audiocache
+        working-directory: playlists/${{ inputs.PLAYLIST }}/audio
         env:
           PLAYLIST_ID: ${{ steps.playlist-data.outputs.playlist-id }}
         run: |
@@ -77,9 +76,12 @@ jobs:
             sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
 
       -
-        name: Cache .audiocache
-        uses: actions/cache/save@v3
+        name: Open PR to add video
+        uses: peter-evans/create-pull-request@v6
         with:
-          path: .audiocache
-          key: ${{ inputs.PLAYLIST }}
+          token: ${{ secrets.GH_PAT }}
+          add-paths: playlists/${{ inputs.PLAYLIST }}/audio
+          branch: audio/${{ github.run_id }}/${{ inputs.PLAYLIST }}
+          title: sync(${{ inputs.PLAYLIST }})
+          body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
