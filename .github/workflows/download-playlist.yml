@@ -52,8 +52,8 @@ jobs:
         run: mkdir .audiocache
 
       -
-        name: Restore .audiocache from cache
-        uses: actions/cache/restore@v3
+        name: Cache .audiocache
+        uses: actions/cache@v4
         with:
           path: .audiocache
           key: ${{ inputs.PLAYLIST }}
@@ -69,11 +69,4 @@ jobs:
             --format wav \
             --save-file save.spotdl \
             sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
-
-      -
-        name: Cache .audiocache
-        uses: actions/cache@v4
-        with:
-          path: .audiocache
-          key: ${{ inputs.PLAYLIST }}
 
