@@ -66,16 +66,6 @@ jobs:
         uses: federicocarboni/setup-ffmpeg@v3.1
 
       -
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-          cache: pip
-
-      -
-        name: Install python modules
-        run: pip install -r requirements.txt
-
-      -
         name: Generate video
         env:
           AUDIOS_PATH: .audiocache
@@ -84,7 +74,6 @@ jobs:
         run: |
           # Generate video
           mkdir -p "$(dirname $OUTPUT_FILE)"
-          rm "$OUTPUT_FILE"
 
           ./video-generator/generate.sh
 
