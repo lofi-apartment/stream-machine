@@ -1,0 +1,41 @@
+name: download-playlists
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      playlists: ${{ steps.list-playlists.outputs.playlists }}
+    steps:
+
+      -
+        uses: actions/checkout@v4
+
+      -
+        name: List playlists
+        id: list-playlists
+        run: |
+          # List playlists
+          echo "playlists=$(yq '.playlists | keys' -o=json --indent=0 playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+
+  download-playlists:
+    name: download (${{ matrix.playlist }})
+    needs: [setup]
+    uses: ./.github/workflows/download-playlist.yml
+    with:
+      PLAYLIST: ${{ matrix.playlist }}
+    if: needs.setup.outputs.playlists != '[]'
+    strategy:
+      matrix:
+        playlist: ${{ fromJson(needs.setup.outputs.playlists) }}
