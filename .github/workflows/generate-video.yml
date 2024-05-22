@@ -1,5 +1,7 @@
 name: generate-video
 
+run-name: generate-video (${{ inputs.PLAYLIST }})
+
 on:
   workflow_call:
     inputs:
