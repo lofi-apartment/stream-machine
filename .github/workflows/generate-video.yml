@@ -83,7 +83,7 @@ jobs:
           OUTPUT_FILE: out/${{ inputs.PLAYLIST }}.mp4
         run: |
           # Generate video
-          mkdir -p "$OUTPUTS_PATH"
+          mkdir -p "$(dirname $OUTPUT_FILE)"
           rm "$OUTPUT_FILE.mp4"
 
           ./video-generator/generate.sh
