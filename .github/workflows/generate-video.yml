@@ -1,0 +1,71 @@
+name: generate-video
+
+on:
+  workflow_call:
+    inputs:
+      PLAYLIST:
+        type: string
+        required: true
+    secrets:
+      GH_PAT:
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  generate-video:
+    runs-on: ubuntu-latest
+    steps:
+
+      -
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      -
+        name: Parse playlist data
+        id: playlist-data
+        run: |
+          # Parse playlist data
+          echo name="$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo "bg-file=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].bg_file' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+
+      -
+        name: Restore .audiocache from cache
+        uses: actions/cache/restore@v3
+        with:
+          path: .audiocache
+          key: ${{ inputs.PLAYLIST }}
+          fail-on-cache-miss: true
+
+      -
+        name: Install ffmpeg
+        uses: federicocarboni/setup-ffmpeg@v3.1
+
+      -
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: pip
+
+      -
+        name: Install python modules
+        run: pip install -r requirements.txt
+
+      -
+        name: Generate video
+        env:
+          AUDIOS_PATH: .audiocache
+          BG_FILE: bg/${{ steps.playlist-data.outputs.bg-file }}
+          OUTPUTS_PATH: out
+        run: |
+          # Generate video
+          mkdir -p "$OUTPUTS_PATH"
+
+
