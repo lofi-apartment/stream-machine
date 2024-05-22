@@ -22,8 +22,14 @@ jobs:
 
       -
         uses: actions/checkout@v4
-        with:
-          lfs: true
+
+      -
+        name: Validate playlist exists
+        run: |
+          if [[ "$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name')" == "null" ]]; then
+            echo "::error::Unrecognized playlist: '${{ inputs.PLAYLIST }}'"
+            exit 1
+          fi
 
       -
         name: Parse playlist data
