@@ -3,7 +3,7 @@ name: download-playlists
 on:
   pull_request:
     branches:
-      - download/*
+      - 'download/*'
   workflow_dispatch:
 
 permissions:
