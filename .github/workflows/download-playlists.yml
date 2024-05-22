@@ -1,6 +1,7 @@
 name: download-playlists
 
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
