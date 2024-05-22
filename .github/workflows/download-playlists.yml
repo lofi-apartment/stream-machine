@@ -30,6 +30,7 @@ jobs:
           echo "playlists=$(yq '.playlists | keys' -o=json --indent=0 playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
   download-playlists:
+    name: download (${{ matrix.playlist }})
     needs: [setup]
     uses: ./.github/workflows/download-playlist.yml
     with:
