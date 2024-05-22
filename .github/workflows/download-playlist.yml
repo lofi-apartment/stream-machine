@@ -16,8 +16,7 @@ defaults:
 
 jobs:
 
-  download-playlist:
-    name: download (${{ inputs.PLAYLIST }})
+  download:
     runs-on: ubuntu-latest
     steps:
 
