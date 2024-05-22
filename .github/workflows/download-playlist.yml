@@ -31,7 +31,7 @@ jobs:
         id: playlist-data
         run: |
           # Parse playlist data
-          echo "name=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo name="$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
           echo "playlist-id=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].playlist_id' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
       -
