@@ -22,7 +22,7 @@ parse_duration () {
     s=$(echo "$duration_string" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+).([0-9]+)/\3/p')
     c=$(echo "$duration_string" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+).([0-9]+)/\4/p')
 
-    duration_ms=$(( (c * ms_per_cs) + (s * ms_per_s) + (m * ms_per_m) + (h * ms_per_h) ))
+    duration_ms=$(( (10#$c * ms_per_cs) + (10#$s * ms_per_s) + (10#$m * ms_per_m) + (10#$h * ms_per_h) ))
 }
 
 parse_now () {
@@ -31,7 +31,7 @@ parse_now () {
     current_m=$(echo "$current_time" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+)/\2/p')
     current_s=$(echo "$current_time" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+)/\3/p')
 
-    current_ms=$(( (current_s * ms_per_s) + (current_m * ms_per_m) + (current_h * ms_per_h) ))
+    current_ms=$(( (10#$current_s * ms_per_s) + (10#$current_m * ms_per_m) + (10#$current_h * ms_per_h) ))
 }
 
 parse_offset () {
