@@ -50,12 +50,9 @@ parse_offset () {
     offset_s=$(( (offset_ms - done_ms) / ms_per_s ))
     done_ms=$(( done_ms + (offset_s * ms_per_s) ))
 
-    if (( (offset_ms - done_ms) >= 1000 )); then
-        echo "Error parsing offset: $offset_ms != $done_ms"
-        exit 1
-    fi
+    offset_cs=$(( (offset_ms - done_ms) / ms_per_cs ))
 
-    offset=$(printf '%02d:%02d:%02d' "${offset_h}" "${offset_m}" "${offset_s}")
+    offset=$(printf '%02d:%02d:%02d.%02d' "${offset_h}" "${offset_m}" "${offset_s}" "${offset_cs}")
 }
 
 run_stream () {
