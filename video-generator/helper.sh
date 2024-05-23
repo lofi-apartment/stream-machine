@@ -1,10 +1,17 @@
 #!/bin/bash
 
+EPOCH=$(date '+%s')
 CWD=$(pwd)
 cachedir=".lofigenerator"
-FFMPEG='ffmpeg -hide_banner -loglevel warning -threads 4'
+FFMPEG='ffmpeg -hide_banner -loglevel error -threads 4'
 
 validate-inputs () {
+    if [[ -n "$PLAYLIST_PATH" ]]; then
+        AUDIOS_PATH="${AUDIOS_PATH-${PLAYLIST_PATH}/audio}"
+        BG_FILE="${BG_FILE-${PLAYLIST_PATH}/bg.jpg}"
+        OUTPUT_FILE="${OUTPUT_FILE-${PLAYLIST_PATH}/video/${EPOCH}.mp4}"
+    fi
+
     if [[ -z "$AUDIOS_PATH" ]]; then
         echo "Command failed: AUDIOS_PATH unset"
         exit 1
@@ -21,6 +28,9 @@ validate-inputs () {
         echo "Command failed: BOLD_FONT unset"
         exit 1
     fi
+
+    mkdir -p "$AUDIOS_PATH"
+    mkdir -p "$(dirname $OUTPUT_FILE)"
 }
 
 setuptmp () {
@@ -34,8 +44,19 @@ cleanuptmp () {
     exit
 }
 
+list-audiofiles () {
+    # add files to array
+    files=()
+    while IFS='' read -r file || [[ -n "$file" ]]; do
+        files+=("$file")
+    done <<< "$(find "$AUDIOS_PATH" -name '*.flac' ! -path ""*/${cachedir}/*"")"
+}
+
 compute-audiosha () {
-    audiosha=$(shasum $AUDIOS_PATH/*.wav | shasum | sed -nE 's/([a-zA-Z0-9]+) .*/\1/p')
+    audiosha="$EPOCH"
+    if [[ "${#files[@]}" -gt 0 ]]; then
+        audiosha=$(shasum ${files[@]} | shasum | sed -nE 's/([a-zA-Z0-9]+) .*/\1/p')
+    fi
 }
 
 download-playlist-if-needed () {
@@ -45,30 +66,23 @@ download-playlist-if-needed () {
 
     echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
-    spotdl --output "{list-position}.{output-ext}" --threads 4 --format wav "$PLAYLIST_URL" || exit 1
+    spotdl --output "{list-position}.{output-ext}" --threads 4 --format flac --save-file "$AUDIOS_PATH/save.spotdl" sync "$PLAYLIST_URL" || exit 1
     cd "$CWD"
 }
 
 setup-audiocache () {
+    list-audiofiles
     compute-audiosha || exit 1
     echo "Audio files hash: $audiosha"
 
     audiocache="$AUDIOS_PATH/$cachedir/$audiosha"
-    audiofile="$audiocache/combined.wav"
+    audiofile="$audiocache/combined.flac"
 
     # Create cache dir if it does not exist
     mkdir -p "$audiocache"
 
     # Cleanup previous caches from non-matching hashes
     find "$AUDIOS_PATH/$cachedir" -path "$AUDIOS_PATH/$cachedir/*" ! -path "*/$audiosha*" -delete
-}
-
-list-audiofiles () {
-    # add files to array
-    files=()
-    while IFS='' read -r file || [[ -n "$file" ]]; do
-        files+=("$file")
-    done <<< "$(find "$AUDIOS_PATH" -name '*.wav' ! -path */${cachedir}/*)"
 }
 
 combine-audiofiles () {
@@ -111,11 +125,16 @@ parse-track-details () {
         return
     fi
 
+    rm -rf "$audiocache/albumart" || true
+    mkdir -p "$audiocache/albumart"
+
     SECONDS=0
     json_details='[]'
     order=0
+    spaces=''
     for file in "${files[@]}"; do
-        file_details=$(ffprobe -i "$file" 2>&1)
+        albumart="$audiocache/albumart/$order.jpg"
+        file_details=$(ffmpeg -i "$file" -an -c:v copy "$albumart" 2>&1)
         title=$(printf '%s' "$file_details" | sed -nE 's/ +title +: +(.+)/\1/p' | head -1)
         artist=$(printf '%s' "$file_details" | sed -nE 's/ +artist +: +(.+)/\1/p' | head -1)
         duration=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
@@ -125,11 +144,13 @@ parse-track-details () {
             --arg title "$title" \
             --arg artist "$artist" \
             --arg duration "$duration" \
+            --arg albumart "$albumart" \
             '{
                 order: $order,
                 title: $title,
                 artist: $artist,
-                duration: $duration
+                duration: $duration,
+                albumart: $albumart
             }')
 
         json_details=$(jq -rc --null-input \
@@ -139,12 +160,12 @@ parse-track-details () {
 
         order=$(( order + 1 ))
 
-        printf '\rParsing metadata: %d/%d songs %s' $(( 10#$order )) "${#files[@]}" '             '
+        printf '%s\rParsing metadata: %d/%d songs' "$spaces" $(( 10#$order )) "${#files[@]}"
     done
 
-    printf '%s\n' "$json_details" > "$audiocache/track-details.json"
+    echo "\ndone. took ${SECONDS}s"
 
-    echo "done. took ${SECONDS}s"
+    printf '%s\n' "$json_details" > "$audiocache/track-details.json"
 }
 
 generate-background () {
@@ -173,6 +194,7 @@ generate-track-videos () {
         -i "$BG_FILE" \
         -c:v libx264 \
         -pix_fmt yuv420p \
+        -tune stillimage \
         -t 0.1 \
         -vf 'scale=1920:1080,fps=30' \
         "$TMP/pre-video.mp4"
@@ -183,6 +205,8 @@ generate-track-videos () {
         title=$(printf '%q' "$title")
         artist=$(printf '%s\n' "$track" | jq -rc '.artist')
         artist=$(printf '%q' "$artist")
+        albumart=$(printf '%s\n' "$track" | jq -rc '.albumart')
+        albumart=$(printf '%q' "$albumart")
         order=$(printf '%s\n' "$track" | jq -rc '.order')
         order=$(printf '%05d' "$order")
         duration=$(printf '%s\n' "$track" | jq -rc '.duration')
@@ -191,27 +215,30 @@ generate-track-videos () {
         drawtext="${drawtext}:fontcolor='white'"
         drawtext="${drawtext}:fontfile=\'$BOLD_FONT\'"
         drawtext="${drawtext}:fontsize=32"
-        drawtext="${drawtext}:x=40"
+        drawtext="${drawtext}:x=120"
         drawtext="${drawtext}:y=40"
         drawtext="${drawtext},drawtext=text=\'by $artist\'"
         drawtext="${drawtext}:fontcolor='white'"
         drawtext="${drawtext}:fontfile=\'$REGULAR_FONT\'"
         drawtext="${drawtext}:fontsize=24"
-        drawtext="${drawtext}:x=40"
+        drawtext="${drawtext}:x=120"
         drawtext="${drawtext}:y=40+40"
 
         $FFMPEG \
             -re \
             -i "$TMP/pre-video.mp4" \
+            -i "$albumart" \
+            -filter_complex "[1:v]scale=60:60 [ovrl], [0:v][ovrl] overlay=40:40, ${drawtext}" \
             -c:v libx264 -c:a copy \
+            -tune stillimage \
             -pix_fmt yuv420p \
-            -vf "${drawtext}" \
             -y "$TMP/tracks/pre-$order.mp4"
 
         $FFMPEG \
             -stream_loop -1 \
             -t "$duration" \
             -i "$TMP/tracks/pre-$order.mp4" \
+            -tune stillimage \
             -c copy \
             -y "$TMP/tracks/$order.mp4"
 

@@ -7,7 +7,11 @@ __pycache__/
 
 # ignore results of local scripts
 .spotdl
+**/*.spotdl
 .lofigenerator
 playlists/**/*.wav
 playlists/**/*.mp3
+playlists/**/*.m4a
+playlists/**/*.flac
 playlists/**/*.mp4
+playlists/**/albumart/**

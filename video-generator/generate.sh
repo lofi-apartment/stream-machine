@@ -19,12 +19,11 @@ download-playlist-if-needed
 echo "Checking for changes..."
 setup-audiocache
 
-echo "Generating audio..."
-list-audiofiles
-combine-audiofiles
-
 echo "Parsing track data..."
 parse-track-details
+
+echo "Generating audio..."
+combine-audiofiles
 
 echo "Generating background..."
 generate-background
