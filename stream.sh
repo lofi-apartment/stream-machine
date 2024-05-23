@@ -61,6 +61,8 @@ parse_offset () {
 run_stream () {
     parse_offset
 
+    echo "Using start offset: $offset"
+
     ffmpeg \
         -hide_banner \
         -re \
