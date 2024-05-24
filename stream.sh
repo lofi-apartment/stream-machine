@@ -76,6 +76,7 @@ run_stream () {
         -tune stillimage \
         -threads 4 \
         -f flv \
+        -max_muxing_queue_size 2048 \
         "rtmp://a.rtmp.youtube.com/live2/$YOUTUBE_STREAM_KEY"
 }
 
