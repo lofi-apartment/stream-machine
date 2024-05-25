@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
+
 CWD=$(pwd)
 cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel warning -threads 4'
