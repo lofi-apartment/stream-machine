@@ -5,14 +5,20 @@ cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel warning -threads 4'
 
 validate-inputs () {
+    if [[ -n "$PLAYLIST_PATH" ]]; then
+        AUDIOS_PATH="${AUDIOS_PATH-${PLAYLIST_PATH}/audio}"
+        BG_FILE="${BG_FILE-${PLAYLIST_PATH}/bg.jpg}"
+        OUTPUT_DIR="${OUTPUT_DIR-${PLAYLIST_PATH}/video}"
+    fi
+
     if [[ -z "$AUDIOS_PATH" ]]; then
         echo "Command failed: AUDIOS_PATH unset"
         exit 1
     elif [[ -z "$BG_FILE" ]]; then
         echo "Command failed: BG_FILE unset"
         exit 1
-    elif [[ -z "$OUTPUT_FILE" ]]; then
-        echo "Command failed: OUTPUT_FILE unset"
+    elif [[ -z "$OUTPUT_DIR" ]]; then
+        echo "Command failed: OUTPUT_DIR unset"
         exit 1
     elif [[ -z "$REGULAR_FONT" ]]; then
         echo "Command failed: REGULAR_FONT unset"
@@ -25,12 +31,12 @@ validate-inputs () {
 
 setuptmp () {
     EPOCH=$(date +%s)
-    TMP="$(dirname $OUTPUT_FILE)/tmp-$EPOCH"
+    TMP="$OUTPUT_DIR/$EPOCH/tmp"
     mkdir -p "$TMP"
 }
 
 cleanuptmp () {
-    find $(dirname $OUTPUT_FILE) -path '*/tmp-*' -delete
+    find "$TMP" -delete
     exit
 }
 
