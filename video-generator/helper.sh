@@ -126,18 +126,23 @@ parse-track-details () {
         file_details=$(ffprobe -i "$file" 2>&1)
         title=$(printf '%s' "$file_details" | sed -nE 's/ +title +: +(.+)/\1/p' | head -1)
         artist=$(printf '%s' "$file_details" | sed -nE 's/ +artist +: +(.+)/\1/p' | head -1)
-        duration=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
+        duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
+        duration_ms=$(parse_duration "$duration_ff")
 
         file_details=$(jq -rc --null-input \
+            --arg file "$file" \
             --argjson order "$order" \
             --arg title "$title" \
             --arg artist "$artist" \
-            --arg duration "$duration" \
+            --arg duration "$duration_ff" \
+            --arg duration_ms "$duration_ms" \
             '{
+                file :$file,
                 order: $order,
                 title: $title,
                 artist: $artist,
-                duration: $duration
+                duration: $duration,
+                duration_ms: $duration_ms
             }')
 
         json_details=$(jq -rc --null-input \
@@ -193,6 +198,8 @@ generate-track-videos () {
         artist=$(printf '%q' "$artist")
         order=$(printf '%s\n' "$track" | jq -rc '.order')
         order=$(printf '%05d' "$order")
+        file=$(printf '%s\n' "$track" | jq -rc '.file')
+        file=$(printf '%q' "$file")
         duration=$(printf '%s\n' "$track" | jq -rc '.duration')
 
         drawtext="drawtext=text=\'$title\'"
@@ -208,6 +215,7 @@ generate-track-videos () {
         drawtext="${drawtext}:x=40"
         drawtext="${drawtext}:y=40+40"
 
+        # encode the starter tile with text over it
         $FFMPEG \
             -re \
             -i "$TMP/pre-video.mp4" \
@@ -216,6 +224,7 @@ generate-track-videos () {
             -vf "${drawtext}" \
             -y "$TMP/tracks/pre-$order.mp4"
 
+        # loop text tile to full duration, using stream copy
         $FFMPEG \
             -stream_loop -1 \
             -t "$duration" \
