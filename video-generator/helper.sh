@@ -293,7 +293,7 @@ generate-track-videos () {
             -f concat \
             -i "$TMP/chapter-files.txt" \
             -c copy \
-            -y "$OUTPUT_DIR/$EPOCH/chapter_${chapter_count}.mp4"
+            -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
 
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
