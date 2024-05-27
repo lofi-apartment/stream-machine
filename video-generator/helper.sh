@@ -225,6 +225,7 @@ generate-track-videos () {
         progresstext=$(printf '                    \r%s' "Chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
         chapter_dir="$TMP/chapters/$chapter_count"
+        echo "Chapter DIR: $chapter_dir"
         mkdir -p "$chapter_dir"
         mkdir -p "$chapter_dir/tracks"
         echo "" > "$TMP/chapter-files.txt"
