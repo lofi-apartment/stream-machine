@@ -86,7 +86,23 @@ jobs:
         run: |
           # Generate video
           ./video-generator/generate.sh
+
       -
-        name: Show results
+        name: Determine output name
+        id: video-dir
         run: |
-          find "playlists/${{ inputs.PLAYLIST }}" -path "**/*.mp4"
+          dir=$(ls "${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}/video")
+          echo "path=$dir" | tee -a "$GITHUB_OUTPUT"
+      -
+        name: Upload artifact
+        uses: actions/upload-artifact@v4
+        id: upload-artifact
+        with:
+          name: ${{ inputs.PLAYLIST }}
+          overwrite: true
+          path: ${{ steps.video-dir.outputs.path }}
+          retention-days: 3
+      -
+        name: Print artifact link
+        run: |
+          echo "[Artifact](${{ steps.upload-artifact.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
