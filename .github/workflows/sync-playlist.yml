@@ -63,6 +63,14 @@ jobs:
         name: Create audio directory
         run: mkdir -p "playlists/${{ inputs.PLAYLIST }}/audio"
 
+      -
+        name: Restore audio cache
+        uses: actions/cache@v4
+        with:
+          path: playlists/${{ inputs.PLAYLIST }}/audio
+          key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
+          restore-keys: ${{ inputs.PLAYLIST }}
+
       - name: Sync playlist
         working-directory: playlists/${{ inputs.PLAYLIST }}/audio
         env:
@@ -74,11 +82,3 @@ jobs:
             --format wav \
             --save-file save.spotdl \
             sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
-
-      -
-        name: Cache audio
-        uses: actions/cache/save@v3
-        with:
-          path: playlists/${{ inputs.PLAYLIST }}/audio
-          key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
-

@@ -70,7 +70,7 @@ jobs:
 
       -
         name: Restore audio cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache@v4
         with:
           path: playlists/${{ inputs.PLAYLIST }}/audio
           key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
