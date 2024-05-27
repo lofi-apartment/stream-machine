@@ -80,9 +80,9 @@ jobs:
         name: Generate video
         env:
           PLAYLIST_URL: https://open.spotify.com/playlist/${{ steps.playlist-data.outputs.playlist_id }}
-          PLAYLIST_PATH: playlists/${{ inputs.PLAYLIST }}
-          REGULAR_FONT: font/Roboto/Roboto-Regular.ttf
-          BOLD_FONT: font/Roboto/Roboto-Regular.ttf
+          PLAYLIST_PATH: ${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}
+          REGULAR_FONT: ${{ github.workspace }}/font/Roboto/Roboto-Regular.ttf
+          BOLD_FONT: ${{ github.workspace }}/font/Roboto/Roboto-Regular.ttf
         run: |
           # Generate video
           ./video-generator/generate.sh
