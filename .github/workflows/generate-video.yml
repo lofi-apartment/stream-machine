@@ -54,7 +54,8 @@ jobs:
 
       -
         name: Install ffmpeg
-        uses: federicocarboni/setup-ffmpeg@v3.1
+        run: |
+          brew install ffmpeg
 
       -
         uses: actions/setup-python@v5
