@@ -69,6 +69,8 @@ jobs:
         env:
           PLAYLIST_URL: https://open.spotify.com/playlist/${{ steps.playlist-data.outputs.playlist_id }}
           PLAYLIST_PATH: playlists/${{ inputs.PLAYLIST }}
+          REGULAR_FONT: font/Roboto/Roboto-Regular.ttf
+          BOLD_FONT: font/Roboto/Roboto-Regular.ttf
         run: |
           # Generate video
           ./video-generator/generate.sh
