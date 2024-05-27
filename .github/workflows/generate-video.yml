@@ -92,7 +92,7 @@ jobs:
         id: video-dir
         run: |
           dir=$(ls "${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}/video")
-          echo "path=$dir" | tee -a "$GITHUB_OUTPUT"
+          echo "path=${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}/video/$dir" | tee -a "$GITHUB_OUTPUT"
       -
         name: Upload artifact
         uses: actions/upload-artifact@v4
