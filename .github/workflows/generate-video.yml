@@ -48,7 +48,8 @@ jobs:
         id: playlist-data
         run: |
           # Parse playlist data
-          echo name="$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo "name=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo "playlist_id=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].playlist_id' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
           echo "bg-file=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].bg_file' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
       -
@@ -56,23 +57,22 @@ jobs:
         uses: federicocarboni/setup-ffmpeg@v3.1
 
       -
-        name: Generate video
-        env:
-          AUDIOS_PATH: playlists/${{ inputs.PLAYLIST }}/audio
-          BG_FILE: bg/${{ steps.playlist-data.outputs.bg-file }}
-          OUTPUT_FILE: playlists/${{ inputs.PLAYLIST }}/video/${{ inputs.PLAYLIST }}.mp4
-        run: |
-          # Generate video
-          mkdir -p "$(dirname $OUTPUT_FILE)"
-
-          ./video-generator/generate.sh
+        name: Restore audio cache
+        uses: actions/cache/restore@v3
+        with:
+          path: playlists/${{ inputs.PLAYLIST }}/audio
+          key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
+          restore-keys: ${{ inputs.PLAYLIST }}
 
       -
-        name: Open PR to add video
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GH_PAT }}
-          add-paths: playlists/${{ inputs.PLAYLIST }}/video
-          branch: video/${{ github.run_id }}/${{ inputs.PLAYLIST }}
-          title: Re-generate ${{ inputs.PLAYLIST }}.mp4
-          body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        name: Generate video
+        env:
+          PLAYLIST_URL: https://open.spotify.com/playlist/${{ steps.playlist-data.outputs.playlist_id }}
+          PLAYLIST_PATH: playlists/${{ inputs.PLAYLIST }}
+        run: |
+          # Generate video
+          ./video-generator/generate.sh
+      -
+        name: Show results
+        run: |
+          find "playlists/${{ inputs.PLAYLIST }}" -path "**/*.wav"

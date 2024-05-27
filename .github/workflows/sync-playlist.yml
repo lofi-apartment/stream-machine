@@ -76,12 +76,9 @@ jobs:
             sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
 
       -
-        name: Open PR to add video
-        uses: peter-evans/create-pull-request@v6
+        name: Cache audio
+        uses: actions/cache/save@v3
         with:
-          token: ${{ secrets.GH_PAT }}
-          add-paths: playlists/${{ inputs.PLAYLIST }}/audio
-          branch: audio/${{ github.run_id }}/${{ inputs.PLAYLIST }}
-          title: sync(${{ inputs.PLAYLIST }})
-          body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          path: playlists/${{ inputs.PLAYLIST }}/audio
+          key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
 
