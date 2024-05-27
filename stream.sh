@@ -1,82 +1,119 @@
 #!/bin/bash
 
+source "$(dirname "${BASH_SOURCE[0]}")/.lib.sh"
+
 if [[ -z "$YOUTUBE_STREAM_KEY" ]]; then
     echo "Missing YOUTUBE_STREAM_KEY"
     exit 1
 fi
 
-if [[ -z "$FILE" ]]; then
-    echo "Missing FILE"
+if [[ -z "$FILES" ]]; then
+    echo "Missing FILES"
     exit 1
 fi
 
-ms_per_cs=10
-ms_per_s=1000
-ms_per_m=$(( 60 * ms_per_s ))
-ms_per_h=$(( 60 * ms_per_m ))
+if [[ -d "$FILES" ]]; then
+    files=($FILES/*.mp4)
+else
+    IFS=','
+    files=($FILES)
+    unset IFS
 
-parse_duration () {
-    duration_string=$(ffprobe "$FILE" 2>&1 | sed -nE 's/ +Duration: +([0-9:.]+),.+/\1/p')
-    h=$(echo "$duration_string" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+).([0-9]+)/\1/p')
-    m=$(echo "$duration_string" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+).([0-9]+)/\2/p')
-    s=$(echo "$duration_string" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+).([0-9]+)/\3/p')
-    c=$(echo "$duration_string" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+).([0-9]+)/\4/p')
-
-    duration_ms=$(( (c * ms_per_cs) + (s * ms_per_s) + (m * ms_per_m) + (h * ms_per_h) ))
-}
+    for file in "${files[@]}"; do
+        if ! [[ -f "$file" ]]; then
+            echo "File not found: $file"
+            exit 1
+        fi
+    done
+fi
 
 parse_now () {
     current_time=$(date '+%T')
     current_h=$(echo "$current_time" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+)/\1/p')
+    current_h=$(parseint "$current_h")
     current_m=$(echo "$current_time" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+)/\2/p')
+    current_m=$(parseint "$current_m")
     current_s=$(echo "$current_time" | sed -nE 's/([0-9]+):([0-9]+):([0-9]+)/\3/p')
+    current_s=$(parseint "$current_s")
 
     current_ms=$(( (current_s * ms_per_s) + (current_m * ms_per_m) + (current_h * ms_per_h) ))
 }
 
 parse_offset () {
-    parse_duration
     parse_now
 
-    offset_ms=$(( current_ms % duration_ms ))
-    done_ms=0
+    json_details='[]'
+    start_ms=0
+    for i in "${!files[@]}"; do
+        file="${files[$i]}"
+        duration_ff=$(ffprobe "$file" 2>&1 | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
+        file_duration_ms=$(parse_duration "$duration_ff")
+        end_ms=$(( start_ms + file_duration_ms ))
 
-    offset_h=$(( offset_ms / ms_per_h ))
-    done_ms=$(( done_ms + (offset_h * ms_per_h) ))
+        json_details=$(jq -rc --null-input \
+            --argjson jd "$json_details" \
+            --argjson start "$start_ms" \
+            --argjson end "$end_ms" \
+            '$jd | . += [{ start: $start, end: $end }]')
 
-    offset_m=$(( (offset_ms - done_ms) / ms_per_m ))
-    done_ms=$(( done_ms + (offset_m * ms_per_m) ))
+        start_ms="$end_ms"
+    done
 
-    offset_s=$(( (offset_ms - done_ms) / ms_per_s ))
-    done_ms=$(( done_ms + (offset_s * ms_per_s) ))
+    full_duration_ms="$start_ms"
+    echo "total duration: $full_duration_ms"
 
-    offset_cs=$(( (offset_ms - done_ms) / ms_per_cs ))
+    # calculate current offset in total videos duration
+    offset_ms=$(( current_ms % full_duration_ms ))
 
-    offset=$(printf '%02d:%02d:%02d.%02d' "${offset_h}" "${offset_m}" "${offset_s}" "${offset_cs}")
+    offset_index=0
+    for i in "${!files[@]}"; do
+        start=$(echo "${json_details}" | jq -rc ".[$i].start")
+        end=$(echo "${json_details}" | jq -rc ".[$i].end")
+        if (( start <= offset_ms )) && (( offset_ms <= end )); then
+            offset_ms="$(( offset_ms - start ))"
+            offset_index="$i"
+            break
+        fi
+    done
+
+    offset=$(duration_from_ms "$offset_ms")
 }
 
 run_stream () {
     parse_offset
 
+    echo "Beginning with video index: $offset_index"
     echo "Using start offset: $offset"
 
-    ffmpeg \
-        -hide_banner \
-        -re \
-        -ss "$offset" \
-        -i "$FILE" \
-        -pix_fmt yuvj420p \
-        -x264-params keyint=48:min-keyint=48:scenecut=-1 \
-        -b:v 4500k \
-        -b:a 128k \
-        -ar 44100 \
-        -acodec aac \
-        -vcodec libx264 \
-        -preset ultrafast \
-        -tune stillimage \
-        -threads 4 \
-        -f flv \
-        "rtmp://a.rtmp.youtube.com/live2/$YOUTUBE_STREAM_KEY"
+    for i in "${!files[@]}"; do
+        ss="00:00:00.00"
+        if (( i < offset_index )); then
+            continue
+        elif [[ "$i" == "$offset_index" ]]; then
+            ss="$offset"
+        fi
+
+        ffmpeg \
+            -hide_banner \
+            -re \
+            -ss "$ss" \
+            -i "${files[$i]}" \
+            -pix_fmt yuvj420p \
+            -x264-params keyint=48:min-keyint=48:scenecut=-1 \
+            -b:v 4500k \
+            -b:a 128k \
+            -ar 44100 \
+            -acodec aac \
+            -vcodec libx264 \
+            -preset ultrafast \
+            -tune stillimage \
+            -threads 4 \
+            -f flv \
+            "rtmp://a.rtmp.youtube.com/live2/$YOUTUBE_STREAM_KEY"
+    done
 }
 
-while run_stream; do :; done
+retries=0
+while $(( retries < 3 )); do
+    run_stream || retries=$(( retries + 1 ))
+done

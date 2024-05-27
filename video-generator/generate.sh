@@ -20,13 +20,8 @@ echo "Checking for changes..."
 setup-audiocache
 
 echo "Parsing track data..."
+list-audiofiles
 parse-track-details
 
-echo "Generating audio..."
-combine-audiofiles
-
-echo "Generating background..."
+echo "Generating video..."
 generate-background
-
-echo "Adding audio to video..."
-add-audio
