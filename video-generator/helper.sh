@@ -219,9 +219,10 @@ generate-track-videos () {
         "$TMP/pre-video.mp4"
 
     track_details=$(cat "$audiocache/track-details.json")
-    chapter_count=0
+    total_chapters=$(cat "$audiocache/chapter-details.json" | jq -rc '. | length')
+    chapter_count=1
     for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
-        chapter_count=$(( chapter_count + 1 ))
+        progresstext=$(printf '                    \r%s' "chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
         chapter_dir="$TMP/chapters/$chapter_count"
         mkdir -p "$chapter_dir"
@@ -278,9 +279,11 @@ generate-track-videos () {
                 -map 0:v -map 1:a \
                 -y "$chapter_dir/tracks/$order.mp4"
 
-            printf '                    \rGenerating track videos: %d/%d songs %s' $(( 10#$order + 1 )) "${#files[@]}"
+            printf '%s: %d/%d songs %s' "$progresstext" $(( 10#$order + 1 )) "${#files[@]}"
             echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
+
+        printf '%s: combining tracks' "$progresstext"
 
         # combine all track files into the chapter file
         $FFMPEG \
@@ -291,6 +294,7 @@ generate-track-videos () {
             -y "$OUTPUT_DIR/$EPOCH/chapter_${chapter_count}.mp4"
 
         rm -rf "$chapter_dir"
+        chapter_count=$(( chapter_count + 1 ))
     done
 
     exit 0
