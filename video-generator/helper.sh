@@ -212,7 +212,7 @@ generate-track-videos () {
     $FFMPEG \
         -loop 1 \
         -i "$BG_FILE" \
-        -c:v libx264 \
+        -c:v libx264 -c:a aac \
         -pix_fmt yuv420p \
         -t 0.1 \
         -vf 'scale=1920:1080,fps=30' \
@@ -275,7 +275,7 @@ generate-track-videos () {
                 -t "$duration" \
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
-                -c copy \
+                -c:v copy -c:a aac \
                 -channel_layout stereo \
                 -map 0:v -map 1:a \
                 -channel_layout stereo \
@@ -292,7 +292,7 @@ generate-track-videos () {
             -safe 0 \
             -f concat \
             -i "$chapter_dir/chapter-files.txt" \
-            -c copy \
+            -c copy -c:a aac \
             -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
 
         rm -rf "$chapter_dir"
