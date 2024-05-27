@@ -89,4 +89,4 @@ jobs:
       -
         name: Show results
         run: |
-          find "playlists/${{ inputs.PLAYLIST }}" -path "**/*.wav"
+          find "playlists/${{ inputs.PLAYLIST }}" -path "**/*.mp4"
