@@ -102,6 +102,7 @@ jobs:
           overwrite: true
           path: ${{ steps.video-dir.outputs.path }}
           retention-days: 3
+          compression-level: 3
       -
         name: Print artifact link
         run: |
