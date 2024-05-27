@@ -212,7 +212,7 @@ generate-track-videos () {
     $FFMPEG \
         -loop 1 \
         -i "$BG_FILE" \
-        -c:v libx264 \
+        -c:v libx264 -c:a aac \
         -pix_fmt yuv420p \
         -t 0.1 \
         -vf 'scale=1920:1080,fps=30' \
@@ -227,7 +227,7 @@ generate-track-videos () {
         chapter_dir="$TMP/chapters/$chapter_count"
         mkdir -p "$chapter_dir"
         mkdir -p "$chapter_dir/tracks"
-        echo "" > "$TMP/chapter-files.txt"
+        touch "$chapter_dir/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
             if [[ -z "$track" ]] || [[ "$track" == "null" ]]; then
@@ -262,20 +262,20 @@ generate-track-videos () {
             $FFMPEG \
                 -re \
                 -i "$TMP/pre-video.mp4" \
-                -c:v libx264 -c:a copy \
+                -c:v libx264 -c:a aac \
                 -pix_fmt yuv420p \
                 -vf "${drawtext}" \
                 -y "$chapter_dir/tracks/pre-$order.mp4"
 
             # loop text tile to full duration, using stream copy
             # also add audio at this point
-            echo "file $chapter_dir/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
+            echo "file '$chapter_dir/tracks/$order.mp4'" >> "$chapter_dir/chapter-files.txt"
             $FFMPEG \
                 -stream_loop -1 \
                 -t "$duration" \
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
-                -c copy \
+                -c:v copy -c:a aac \
                 -channel_layout stereo \
                 -map 0:v -map 1:a \
                 -channel_layout stereo \
@@ -291,8 +291,8 @@ generate-track-videos () {
         $FFMPEG \
             -safe 0 \
             -f concat \
-            -i "$TMP/chapter-files.txt" \
-            -c copy \
+            -i "$chapter_dir/chapter-files.txt" \
+            -c copy -c:a aac \
             -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
 
         rm -rf "$chapter_dir"

@@ -48,31 +48,62 @@ jobs:
         id: playlist-data
         run: |
           # Parse playlist data
-          echo name="$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo "name=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].name' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
+          echo "playlist_id=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].playlist_id' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
           echo "bg-file=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].bg_file' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
       -
         name: Install ffmpeg
-        uses: federicocarboni/setup-ffmpeg@v3.1
+        run: |
+          sudo apt update
+          sudo apt install -y ffmpeg
+
+      -
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip' # caching pip dependencies
+
+      -
+        name: Install python modules
+        run: pip install -r requirements.txt
+
+      -
+        name: Restore audio cache
+        uses: actions/cache@v4
+        with:
+          path: playlists/${{ inputs.PLAYLIST }}/audio
+          key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
+          restore-keys: ${{ inputs.PLAYLIST }}
 
       -
         name: Generate video
         env:
-          AUDIOS_PATH: playlists/${{ inputs.PLAYLIST }}/audio
-          BG_FILE: bg/${{ steps.playlist-data.outputs.bg-file }}
-          OUTPUT_FILE: playlists/${{ inputs.PLAYLIST }}/video/${{ inputs.PLAYLIST }}.mp4
+          PLAYLIST_URL: https://open.spotify.com/playlist/${{ steps.playlist-data.outputs.playlist_id }}
+          PLAYLIST_PATH: ${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}
+          REGULAR_FONT: ${{ github.workspace }}/font/Roboto/Roboto-Regular.ttf
+          BOLD_FONT: ${{ github.workspace }}/font/Roboto/Roboto-Regular.ttf
         run: |
           # Generate video
-          mkdir -p "$(dirname $OUTPUT_FILE)"
-
           ./video-generator/generate.sh
 
       -
-        name: Open PR to add video
-        uses: peter-evans/create-pull-request@v6
+        name: Determine output name
+        id: video-dir
+        run: |
+          dir=$(ls "${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}/video")
+          echo "path=${{ github.workspace }}/playlists/${{ inputs.PLAYLIST }}/video/$dir" | tee -a "$GITHUB_OUTPUT"
+      -
+        name: Upload artifact
+        uses: actions/upload-artifact@v4
+        id: upload-artifact
         with:
-          token: ${{ secrets.GH_PAT }}
-          add-paths: playlists/${{ inputs.PLAYLIST }}/video
-          branch: video/${{ github.run_id }}/${{ inputs.PLAYLIST }}
-          title: Re-generate ${{ inputs.PLAYLIST }}.mp4
-          body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          name: ${{ inputs.PLAYLIST }}
+          overwrite: true
+          path: ${{ steps.video-dir.outputs.path }}
+          retention-days: 3
+          compression-level: 3
+      -
+        name: Print artifact link
+        run: |
+          echo "[Artifact](${{ steps.upload-artifact.outputs.artifact-url }}) (Expires $(date -v+3d))" >> "$GITHUB_STEP_SUMMARY"

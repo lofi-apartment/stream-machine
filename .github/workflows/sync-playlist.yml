@@ -63,6 +63,14 @@ jobs:
         name: Create audio directory
         run: mkdir -p "playlists/${{ inputs.PLAYLIST }}/audio"
 
+      -
+        name: Restore audio cache
+        uses: actions/cache@v4
+        with:
+          path: playlists/${{ inputs.PLAYLIST }}/audio
+          key: ${{ inputs.PLAYLIST }}-${{ github.run_id }}
+          restore-keys: ${{ inputs.PLAYLIST }}
+
       - name: Sync playlist
         working-directory: playlists/${{ inputs.PLAYLIST }}/audio
         env:
@@ -74,14 +82,3 @@ jobs:
             --format wav \
             --save-file save.spotdl \
             sync "https://open.spotify.com/playlist/${PLAYLIST_ID}"
-
-      -
-        name: Open PR to add video
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GH_PAT }}
-          add-paths: playlists/${{ inputs.PLAYLIST }}/audio
-          branch: audio/${{ github.run_id }}/${{ inputs.PLAYLIST }}
-          title: sync(${{ inputs.PLAYLIST }})
-          body: Generated via [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
