@@ -13,7 +13,7 @@ if [[ -z "$FILES" ]]; then
 fi
 
 if [[ -d "$FILES" ]]; then
-    files=$($FILES/*.mp4)
+    files=($FILES/*.mp4)
 else
     IFS=','
     files=($FILES)
