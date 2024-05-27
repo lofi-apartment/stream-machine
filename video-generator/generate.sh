@@ -20,7 +20,6 @@ echo "Checking for changes..."
 setup-audiocache
 
 echo "Parsing track data..."
-list-audiofiles
 parse-track-details
 
 echo "Generating video..."

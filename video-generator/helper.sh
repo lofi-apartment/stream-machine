@@ -47,14 +47,6 @@ cleanuptmp () {
     exit
 }
 
-list-audiofiles () {
-    # add files to array
-    files=()
-    while IFS='' read -r file || [[ -n "$file" ]]; do
-        files+=("$file")
-    done <<< "$(find "$AUDIOS_PATH" -name '*.flac' ! -path ""*/${cachedir}/*"")"
-}
-
 compute-audiosha () {
     audiosha="$EPOCH"
     if [[ "${#files[@]}" -gt 0 ]]; then
@@ -89,6 +81,14 @@ setup-audiocache () {
 
     # Cleanup previous caches from non-matching hashes
     find "$AUDIOS_PATH/$cachedir" -path "$AUDIOS_PATH/$cachedir/*" ! -path "*/$audiosha*" -delete
+}
+
+list-audiofiles () {
+    # add files to array
+    files=()
+    while IFS='' read -r file || [[ -n "$file" ]]; do
+        files+=("$file")
+    done <<< "$(find "$AUDIOS_PATH" -name '*.flac' ! -path ""*/${cachedir}/*"")"
 }
 
 parse-track-details () {
