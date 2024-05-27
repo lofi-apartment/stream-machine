@@ -53,7 +53,14 @@ download-playlist-if-needed () {
 
     echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
-    spotdl --output "{list-position}.{output-ext}" --threads 4 --format wav "$PLAYLIST_URL" || exit 1
+    spotdl \
+        --output "{list-position}.{output-ext}" \
+        --threads 2 \
+        --format wav \
+        --save-file "$AUDIOS_PATH/save.spotdl" \
+        sync "$PLAYLIST_URL" \
+        --audio youtube-music soundcloud youtube \
+        || exit 1
     cd "$CWD"
 }
 
