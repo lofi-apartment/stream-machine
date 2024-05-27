@@ -269,7 +269,7 @@ generate-track-videos () {
 
             # loop text tile to full duration, using stream copy
             # also add audio at this point
-            echo "file $chapter_dir/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
+            echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/chapter-files.txt"
             $FFMPEG \
                 -stream_loop -1 \
                 -t "$duration" \
