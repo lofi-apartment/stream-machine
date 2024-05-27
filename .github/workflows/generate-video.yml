@@ -53,6 +53,10 @@ jobs:
           echo "bg-file=$(yq '.playlists.["${{ inputs.PLAYLIST }}"].bg_file' playlists.yml)" | tee -a "$GITHUB_OUTPUT"
 
       -
+        name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      -
         name: Install ffmpeg
         run: |
           brew install ffmpeg
