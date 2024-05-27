@@ -31,12 +31,14 @@ validate-inputs () {
         exit 1
     fi
 
-    mkdir -p "$AUDIOS_PATH"
-    mkdir -p "$(dirname $OUTPUT_FILE)"
+    THIS_OUTPUT_DIR="${OUTPUT_DIR}/${EPOCH}"
+
+    mkdir -p "${AUDIOS_PATH}"
+    mkdir -p "${THIS_OUTPUT_DIR}"
 }
 
 setuptmp () {
-    TMP="$OUTPUT_DIR/$EPOCH/tmp"
+    TMP="${THIS_OUTPUT_DIR}/tmp"
     mkdir -p "$TMP"
 }
 
@@ -314,7 +316,7 @@ generate-track-videos () {
             -i "$TMP/chapter-files.txt" \
             -tune stillimage \
             -c copy \
-            -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
+            -y $(printf '%s/chapter_%05d.mp4' "$THIS_OUTPUT_DIR" "$chapter_count")
 
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
