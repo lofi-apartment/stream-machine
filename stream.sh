@@ -113,4 +113,7 @@ run_stream () {
     done
 }
 
-while run_stream; do :; done
+retries=0
+while $(( retries < 3 )); do
+    run_stream || retries=$(( retries+1 ))
+done
