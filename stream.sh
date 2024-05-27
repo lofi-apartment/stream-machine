@@ -63,7 +63,7 @@ parse_offset () {
     echo "total duration: $full_duration_ms"
 
     # calculate current offset in total videos duration
-    offset_ms=$(( current_ms % duration_ms ))
+    offset_ms=$(( current_ms % full_duration_ms ))
 
     offset_index=0
     for i in "${!files[@]}"; do
