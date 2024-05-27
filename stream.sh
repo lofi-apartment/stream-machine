@@ -12,16 +12,20 @@ if [[ -z "$FILES" ]]; then
     exit 1
 fi
 
-IFS=','
-files=($FILES)
-unset IFS
+if [[ -d "$FILES" ]]; then
+    files=$($FILES/*.mp4)
+else
+    IFS=','
+    files=($FILES)
+    unset IFS
 
-for file in "${files[@]}"; do
-    if ! [[ -f "$file" ]]; then
-        echo "File not found: $file"
-        exit 1
-    fi
-done
+    for file in "${files[@]}"; do
+        if ! [[ -f "$file" ]]; then
+            echo "File not found: $file"
+            exit 1
+        fi
+    done
+fi
 
 parse_now () {
     current_time=$(date '+%T')
