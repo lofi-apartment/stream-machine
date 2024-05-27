@@ -225,10 +225,9 @@ generate-track-videos () {
         progresstext=$(printf '                    \r%s' "Chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
         chapter_dir="$TMP/chapters/$chapter_count"
-        echo "Chapter DIR: $chapter_dir"
         mkdir -p "$chapter_dir"
         mkdir -p "$chapter_dir/tracks"
-        echo "" > "$TMP/chapter-files.txt"
+        touch "$chapter_dir/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
             if [[ -z "$track" ]] || [[ "$track" == "null" ]]; then
@@ -270,7 +269,7 @@ generate-track-videos () {
 
             # loop text tile to full duration, using stream copy
             # also add audio at this point
-            echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/chapter-files.txt"
+            echo "file '$chapter_dir/tracks/$order.mp4'" >> "$chapter_dir/chapter-files.txt"
             $FFMPEG \
                 -stream_loop -1 \
                 -t "$duration" \
@@ -292,7 +291,7 @@ generate-track-videos () {
         $FFMPEG \
             -safe 0 \
             -f concat \
-            -i "$TMP/chapter-files.txt" \
+            -i "$chapter_dir/chapter-files.txt" \
             -c copy \
             -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
 
