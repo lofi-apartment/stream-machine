@@ -46,7 +46,8 @@ parse_offset () {
     start_ms=0
     for i in "${!files[@]}"; do
         file="${files[$i]}"
-        file_duration_ms=$(parse_duration "$file")
+        duration_ff=$(ffprobe "$file" 2>&1 | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
+        file_duration_ms=$(parse_duration "$duration_ff")
         end_ms=$(( start_ms + file_duration_ms ))
 
         json_details=$(jq -rc --null-input \
@@ -62,7 +63,7 @@ parse_offset () {
     echo "total duration: $full_duration_ms"
 
     # calculate current offset in total videos duration
-    offset_ms=$(( current_ms % full_duration_ms ))
+    offset_ms=$(( current_ms % duration_ms ))
 
     offset_index=0
     for i in "${!files[@]}"; do
