@@ -55,7 +55,8 @@ jobs:
       -
         name: Install ffmpeg
         run: |
-          apt install ffmpeg
+          sudo apt update
+          sudo apt install -y ffmpeg
 
       -
         uses: actions/setup-python@v5
