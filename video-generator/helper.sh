@@ -222,7 +222,7 @@ generate-track-videos () {
     total_chapters=$(cat "$audiocache/chapter-details.json" | jq -rc '. | length')
     chapter_count=1
     for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
-        progresstext=$(printf '                    \r%s' "chapter ${chapter_count}/${total_chapters}")
+        progresstext=$(printf '                    \r%s' "Chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
         chapter_dir="$TMP/chapters/$chapter_count"
         mkdir -p "$chapter_dir"
@@ -297,6 +297,8 @@ generate-track-videos () {
 
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
+
+        printf '%s: complete!                         \n' "$progresstext"
     done
 
     exit 0
