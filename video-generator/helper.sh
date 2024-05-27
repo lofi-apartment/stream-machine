@@ -2,6 +2,7 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
 
+EPOCH=$(date '+%Y-%m-%d-%H-%M')
 CWD=$(pwd)
 cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel warning -threads 4'
@@ -32,7 +33,6 @@ validate-inputs () {
 }
 
 setuptmp () {
-    EPOCH=$(date +%s)
     TMP="$OUTPUT_DIR/$EPOCH/tmp"
     mkdir -p "$TMP"
 }
@@ -120,24 +120,31 @@ parse-track-details () {
     fi
 
     SECONDS=0
+
+    # parse durations into a file
     json_details='[]'
     order=0
     for file in "${files[@]}"; do
         file_details=$(ffprobe -i "$file" 2>&1)
         title=$(printf '%s' "$file_details" | sed -nE 's/ +title +: +(.+)/\1/p' | head -1)
         artist=$(printf '%s' "$file_details" | sed -nE 's/ +artist +: +(.+)/\1/p' | head -1)
-        duration=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
+        duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
+        duration_ms=$(parse_duration "$duration_ff")
 
         file_details=$(jq -rc --null-input \
+            --arg file "$file" \
             --argjson order "$order" \
             --arg title "$title" \
             --arg artist "$artist" \
-            --arg duration "$duration" \
+            --arg duration "$duration_ff" \
+            --arg duration_ms "$duration_ms" \
             '{
+                file :$file,
                 order: $order,
                 title: $title,
                 artist: $artist,
-                duration: $duration
+                duration: $duration,
+                duration_ms: $duration_ms
             }')
 
         json_details=$(jq -rc --null-input \
@@ -152,6 +159,39 @@ parse-track-details () {
 
     printf '%s\n' "$json_details" > "$audiocache/track-details.json"
 
+    # group songs into chapters and add details to file
+    chapters='[]'
+    chapter_max_ms=$(( 30 * ms_per_m ))
+    chapter_index=0
+    chapter_size_ms=0
+    for i in "${!files[@]}"; do
+        file_details=$(printf '%s' "$json_details" | jq -rc ".[$i]")
+        file_ms=$(printf '%s' "$file_details" | jq -rc '.duration_ms')
+
+        chapter_size_ms=$(( chapter_size_ms + file_ms ))
+
+        if (( chapter_size_ms > chapter_max_ms )); then
+            # add file to new chapter
+            chapter_size_ms="$file_ms"
+            chapter_index=$(( chapter_index + 1 ))
+            chapters=$(jq --null-input -rc \
+                --argjson all "$chapters" \
+                --argjson file "$file_details" \
+                '$all | . += [{
+                    files: [$file.file],
+                }]')
+        else
+            # add file to existing chapter
+            chapters=$(jq --null-input -rc \
+                --argjson all "$chapters" \
+                --argjson i "$chapter_index" \
+                --argjson file "$file_details" \
+                '$all | .[$i].files += [$file.file]')
+        fi
+    done
+
+    printf '%s\n' "$chapters" > "$audiocache/chapter-details.json"
+
     echo "done. took ${SECONDS}s"
 }
 
@@ -161,13 +201,6 @@ generate-background () {
     mkdir "$TMP/tracks"
 
     generate-track-videos
-
-    $FFMPEG \
-        -safe 0 \
-        -f concat \
-        -i "$TMP/track-files.txt" \
-        -c copy \
-        -y "$TMP/video.mp4"
 
     rm -rf "$TMP/tracks"
 
@@ -185,58 +218,80 @@ generate-track-videos () {
         -vf 'scale=1920:1080,fps=30' \
         "$TMP/pre-video.mp4"
 
-    for encodedRow in $(cat "$audiocache/track-details.json" | jq -r '.[] | @base64'); do
-        track=$(printf '%s\n' "$encodedRow" | base64 --decode)
-        title=$(printf '%s\n' "$track" | jq -rc '.title')
-        title=$(printf '%q' "$title")
-        artist=$(printf '%s\n' "$track" | jq -rc '.artist')
-        artist=$(printf '%q' "$artist")
-        order=$(printf '%s\n' "$track" | jq -rc '.order')
-        order=$(printf '%05d' "$order")
-        duration=$(printf '%s\n' "$track" | jq -rc '.duration')
+    track_details=$(cat "$audiocache/track-details.json")
+    chapter_count=0
+    for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
+        chapter_count=$(( chapter_count + 1 ))
+        chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
+        chapter_dir="$TMP/chapters/$chapter_count"
+        mkdir -p "$chapter_dir"
+        mkdir -p "$chapter_dir/tracks"
+        echo "" > "$TMP/chapter-files.txt"
+        for file in $(echo "$chapter" | jq -rc '.files[]'); do
+            track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
+            if [[ -z "$track" ]] || [[ "$track" == "null" ]]; then
+                echo "Failed to determine details for track $file"
+                exit 1
+            fi
 
-        drawtext="drawtext=text=\'$title\'"
-        drawtext="${drawtext}:fontcolor='white'"
-        drawtext="${drawtext}:fontfile=\'$BOLD_FONT\'"
-        drawtext="${drawtext}:fontsize=32"
-        drawtext="${drawtext}:x=40"
-        drawtext="${drawtext}:y=40"
-        drawtext="${drawtext},drawtext=text=\'by $artist\'"
-        drawtext="${drawtext}:fontcolor='white'"
-        drawtext="${drawtext}:fontfile=\'$REGULAR_FONT\'"
-        drawtext="${drawtext}:fontsize=24"
-        drawtext="${drawtext}:x=40"
-        drawtext="${drawtext}:y=40+40"
+            title=$(printf '%s\n' "$track" | jq -rc '.title')
+            title=$(printf '%q' "$title")
+            artist=$(printf '%s\n' "$track" | jq -rc '.artist')
+            artist=$(printf '%q' "$artist")
+            order=$(printf '%s\n' "$track" | jq -rc '.order')
+            order=$(printf '%05d' "$order")
+            file=$(printf '%s\n' "$track" | jq -rc '.file')
+            file=$(printf '%q' "$file")
+            duration=$(printf '%s\n' "$track" | jq -rc '.duration')
 
+            drawtext="drawtext=text=\'$title\'"
+            drawtext="${drawtext}:fontcolor='white'"
+            drawtext="${drawtext}:fontfile=\'$BOLD_FONT\'"
+            drawtext="${drawtext}:fontsize=32"
+            drawtext="${drawtext}:x=40"
+            drawtext="${drawtext}:y=40"
+            drawtext="${drawtext},drawtext=text=\'by $artist\'"
+            drawtext="${drawtext}:fontcolor='white'"
+            drawtext="${drawtext}:fontfile=\'$REGULAR_FONT\'"
+            drawtext="${drawtext}:fontsize=24"
+            drawtext="${drawtext}:x=40"
+            drawtext="${drawtext}:y=40+40"
+
+            # encode the starter tile with text over it
+            $FFMPEG \
+                -re \
+                -i "$TMP/pre-video.mp4" \
+                -c:v libx264 -c:a copy \
+                -pix_fmt yuv420p \
+                -vf "${drawtext}" \
+                -y "$chapter_dir/tracks/pre-$order.mp4"
+
+            # loop text tile to full duration, using stream copy
+            # also add audio at this point
+            echo "file $chapter_dir/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
+            $FFMPEG \
+                -stream_loop -1 \
+                -t "$duration" \
+                -i "$chapter_dir/tracks/pre-$order.mp4" \
+                -i "$file" \
+                -c copy \
+                -map 0:v -map 1:a \
+                -y "$chapter_dir/tracks/$order.mp4"
+
+            printf '                    \rGenerating track videos: %d/%d songs %s' $(( 10#$order + 1 )) "${#files[@]}"
+            echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
+        done
+
+        # combine all track files into the chapter file
         $FFMPEG \
-            -re \
-            -i "$TMP/pre-video.mp4" \
-            -c:v libx264 -c:a copy \
-            -pix_fmt yuv420p \
-            -vf "${drawtext}" \
-            -y "$TMP/tracks/pre-$order.mp4"
-
-        $FFMPEG \
-            -stream_loop -1 \
-            -t "$duration" \
-            -i "$TMP/tracks/pre-$order.mp4" \
+            -safe 0 \
+            -f concat \
+            -i "$TMP/chapter-files.txt" \
             -c copy \
-            -y "$TMP/tracks/$order.mp4"
+            -y "$OUTPUT_DIR/$EPOCH/chapter_${chapter_count}.mp4"
 
-        printf '                    \rGenerating track videos: %d/%d songs %s' $(( 10#$order + 1 )) "${#files[@]}"
-        echo "file '$TMP/tracks/$order.mp4'" >> "$TMP/track-files.txt"
+        rm -rf "$chapter_dir"
     done
-}
 
-add-audio () {
-    SECONDS=0
-    $FFMPEG \
-        -i "$TMP/video.mp4" -i "${audiofile}" \
-        -c:v copy \
-        -map 0:v -map 1:a \
-        -y "$OUTPUT_FILE"
-
-    MINS=$(( SECONDS / 60 ))
-    MINS=$(printf '%.1f' "$MINS")
-    echo "done. took ${MINS}m"
+    exit 0
 }
