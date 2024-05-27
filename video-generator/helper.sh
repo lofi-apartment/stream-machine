@@ -69,7 +69,12 @@ download-playlist-if-needed () {
 
     echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
-    spotdl --output "{list-position}.{output-ext}" --threads 4 --format flac --save-file "$AUDIOS_PATH/save.spotdl" sync "$PLAYLIST_URL" || exit 1
+    spotdl \
+        --output "{list-position}.{output-ext}" \
+        --threads 4 \
+        --format flac \
+        --save-file "$AUDIOS_PATH/save.spotdl" \
+        sync "$PLAYLIST_URL" || exit 1
     cd "$CWD"
 }
 
