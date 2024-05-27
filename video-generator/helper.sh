@@ -2,7 +2,7 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
 
-EPOCH=$(date +%s)
+EPOCH=$(date '+%Y-%m-%d-%H-%M')
 CWD=$(pwd)
 cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel warning -threads 4'
@@ -223,6 +223,9 @@ generate-track-videos () {
     for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
         chapter_count=$(( chapter_count + 1 ))
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
+        chapter_dir="$TMP/chapters/$chapter_count"
+        mkdir -p "$chapter_dir"
+        mkdir -p "$chapter_dir/tracks"
         echo "" > "$TMP/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
@@ -261,32 +264,33 @@ generate-track-videos () {
                 -c:v libx264 -c:a copy \
                 -pix_fmt yuv420p \
                 -vf "${drawtext}" \
-                -y "$TMP/tracks/pre-$order.mp4"
+                -y "$chapter_dir/tracks/pre-$order.mp4"
 
             # loop text tile to full duration, using stream copy
             # also add audio at this point
-            echo "file $TMP/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
+            echo "file $chapter_dir/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
             $FFMPEG \
                 -stream_loop -1 \
                 -t "$duration" \
-                -i "$TMP/tracks/pre-$order.mp4" \
+                -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
                 -c copy \
                 -map 0:v -map 1:a \
-                -y "$TMP/tracks/$order.mp4"
-
-            rm "$TMP/tracks/pre-$order.mp4"
+                -y "$chapter_dir/tracks/$order.mp4"
 
             printf '                    \rGenerating track videos: %d/%d songs %s' $(( 10#$order + 1 )) "${#files[@]}"
-            echo "file '$TMP/tracks/$order.mp4'" >> "$TMP/track-files.txt"
+            echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
 
+        # combine all track files into the chapter file
         $FFMPEG \
             -safe 0 \
             -f concat \
             -i "$TMP/chapter-files.txt" \
             -c copy \
             -y "$OUTPUT_DIR/$EPOCH/chapter_${chapter_count}.mp4"
+
+        rm -rf "$chapter_dir"
     done
 
     exit 0
