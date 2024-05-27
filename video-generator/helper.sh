@@ -263,7 +263,7 @@ generate-track-videos () {
             $FFMPEG \
                 -re \
                 -i "$TMP/pre-video.mp4" \
-                -c:v libx264 -c:a copy \
+                -c:v libx264 -c:a aac \
                 -pix_fmt yuv420p \
                 -vf "${drawtext}" \
                 -y "$chapter_dir/tracks/pre-$order.mp4"
