@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
 EPOCH=$(date '+%Y-%m-%d-%H-%M')
 CWD=$(pwd)
 cachedir=".lofigenerator"
-FFMPEG='ffmpeg -hide_banner -loglevel warning -threads 4'
+FFMPEG='ffmpeg -hide_banner -loglevel error -threads 4'
 
 validate-inputs () {
     if [[ -n "$PLAYLIST_PATH" ]]; then
@@ -276,7 +276,9 @@ generate-track-videos () {
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
                 -c copy \
+                -channel_layout stereo \
                 -map 0:v -map 1:a \
+                -channel_layout stereo \
                 -y "$chapter_dir/tracks/$order.mp4"
 
             printf '%s: %d/%d songs %s' "$progresstext" $(( 10#$order + 1 )) "${#files[@]}"
