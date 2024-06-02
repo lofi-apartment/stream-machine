@@ -220,6 +220,7 @@ generate-track-videos () {
         -loop 1 \
         -i "$BG_FILE" \
         -c:v libx264 \
+        -c:a copy \
         -pix_fmt yuv420p \
         -t 0.1 \
         -vf 'scale=1920:1080,fps=30' \
