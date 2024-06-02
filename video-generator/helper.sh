@@ -5,7 +5,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
 EPOCH=$(date '+%Y-%m-%d-%H-%M')
 CWD=$(pwd)
 cachedir=".lofigenerator"
-FFMPEG='ffmpeg -hide_banner -loglevel error -threads 4'
+FFMPEG='ffmpeg -hide_banner -loglevel error'
 
 validate-inputs () {
     if [[ -n "$PLAYLIST_PATH" ]]; then
