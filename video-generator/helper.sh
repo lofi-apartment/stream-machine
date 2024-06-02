@@ -216,7 +216,6 @@ generate-background () {
 
 generate-track-videos () {
     # create a starter video, looping background image for 0.1s
-    echo "creating starter image"
     $FFMPEG \
         -loop 1 \
         -i "$BG_FILE" \
@@ -267,7 +266,6 @@ generate-track-videos () {
             drawtext="${drawtext}:x=40"
             drawtext="${drawtext}:y=40+40"
 
-            echo "a"
             # encode the starter tile with text over it
             $FFMPEG \
                 -re \
@@ -279,16 +277,13 @@ generate-track-videos () {
 
             # loop text tile to full duration, using stream copy
             # also add audio at this point
-            echo "b"
             echo "file $chapter_dir/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
             $FFMPEG \
                 -stream_loop -1 \
                 -t "$duration" \
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
-                -c:v copy \
-                -c:a aac \
-                -channel_layout stereo \
+                -c:v copy -c:a aac \
                 -map 0:v -map 1:a \
                 -channel_layout stereo \
                 -y "$chapter_dir/tracks/$order.mp4"
