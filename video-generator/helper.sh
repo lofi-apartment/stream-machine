@@ -14,6 +14,8 @@ validate-inputs () {
         OUTPUT_DIR="${OUTPUT_DIR-${PLAYLIST_PATH}/video}"
     fi
 
+    TEXT_COLOR="${TEXT_COLOR-white}"
+
     if [[ -z "$AUDIOS_PATH" ]]; then
         echo "Command failed: AUDIOS_PATH unset"
         exit 1
@@ -138,11 +140,16 @@ parse-track-details () {
         duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
         duration_ms=$(parse_duration "$duration_ff")
 
+        tsrc=$(printf '%s' "$file_details" | sed -nE 's/ +TSRC +: +([a-zA-Z0-9]+)/\1/p' | head -1)
+        spotdl_details=$(cat "$AUDIOS_PATH/save.spotdl" | jq --arg isrc "$tsrc" -rc '.songs | map(select(.isrc == $isrc)) | first')
+        cover_url=$(printf '%s' "${spotdl_details}" | jq -rc '.cover_url')
+
         file_details=$(jq -rc --null-input \
             --arg file "$file" \
             --argjson order "$order" \
             --arg title "$title" \
             --arg artist "$artist" \
+            --arg coverurl "$cover_url" \
             --arg duration "$duration_ff" \
             --arg duration_ms "$duration_ms" \
             '{
@@ -150,6 +157,7 @@ parse-track-details () {
                 order: $order,
                 title: $title,
                 artist: $artist,
+                coverurl: $coverurl,
                 duration: $duration,
                 duration_ms: $duration_ms
             }')
@@ -244,35 +252,39 @@ generate-track-videos () {
             fi
 
             title=$(printf '%s\n' "$track" | jq -rc '.title')
-            title=$(printf '%q' "$title")
             artist=$(printf '%s\n' "$track" | jq -rc '.artist')
-            artist=$(printf '%q' "$artist")
+            cover_url=$(printf '%s\n' "$track" | jq -rc '.coverurl')
+
             order=$(printf '%s\n' "$track" | jq -rc '.order')
             order=$(printf '%05d' "$order")
             file=$(printf '%s\n' "$track" | jq -rc '.file')
             file=$(printf '%q' "$file")
             duration=$(printf '%s\n' "$track" | jq -rc '.duration')
 
-            drawtext="drawtext=text=\'$title\'"
-            drawtext="${drawtext}:fontcolor='white'"
-            drawtext="${drawtext}:fontfile=\'$BOLD_FONT\'"
-            drawtext="${drawtext}:fontsize=32"
-            drawtext="${drawtext}:x=40"
-            drawtext="${drawtext}:y=40"
-            drawtext="${drawtext},drawtext=text=\'by $artist\'"
-            drawtext="${drawtext}:fontcolor='white'"
-            drawtext="${drawtext}:fontfile=\'$REGULAR_FONT\'"
-            drawtext="${drawtext}:fontsize=24"
-            drawtext="${drawtext}:x=40"
-            drawtext="${drawtext}:y=40+40"
+            # download cover image
+            curl -s "${cover_url}" -o "$chapter_dir/tracks/cover-$order.png"
 
-            # encode the starter tile with text over it
+            # generate text
+            python3 "$(dirname "${BASH_SOURCE[0]}")/textimg.py" \
+                -t "${title}" \
+                -a "${artist}" \
+                -f "$REGULAR_FONT" \
+                -c "$TEXT_COLOR" \
+                -o "$chapter_dir/tracks/txt-$order.png"
+
+            # encode the starter tile
             $FFMPEG \
                 -re \
                 -i "$TMP/pre-video.mp4" \
+                -i "$chapter_dir/tracks/txt-$order.png" \
+                -i "$chapter_dir/tracks/cover-$order.png" \
                 -c:v libx264 -c:a copy \
                 -pix_fmt yuv420p \
-                -vf "${drawtext}" \
+                -filter_complex \
+                    '[1:v]scale=w=-1:h=80 [txt];
+                     [2:v]scale=w=-1:h=80 [cvr];
+                     [0:v][cvr] overlay=40:40 [withcvr];
+                     [withcvr][txt] overlay=135:45' \
                 -y "$chapter_dir/tracks/pre-$order.mp4"
 
             # loop text tile to full duration, using stream copy
@@ -285,7 +297,6 @@ generate-track-videos () {
                 -i "$file" \
                 -c:v copy -c:a aac \
                 -map 0:v -map 1:a \
-                -channel_layout stereo \
                 -y "$chapter_dir/tracks/$order.mp4"
 
             printf '%s: %d/%d songs %s' "$progresstext" $(( 10#$order + 1 )) "${#files[@]}"
