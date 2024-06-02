@@ -49,6 +49,7 @@ cleanuptmp () {
 }
 
 compute-audiosha () {
+    mkdir -p "$AUDIOS_PATH"
     audiosha=$(shasum $AUDIOS_PATH/*.wav | shasum | sed -nE 's/([a-zA-Z0-9]+) .*/\1/p')
 }
 
