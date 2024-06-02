@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ "$DEBUG" = "true" ]]; then
+    set -x
+fi
+
 source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
 
 EPOCH=$(date '+%Y-%m-%d-%H-%M')
