@@ -16,7 +16,8 @@ trap cleanuptmp EXIT
 
 setuptmp
 
-download-playlist-if-needed
+echo "Fetching playlist..."
+fetch-playlist
 
 echo "Checking for changes..."
 setup-audiocache

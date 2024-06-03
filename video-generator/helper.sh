@@ -11,6 +11,8 @@ CWD=$(pwd)
 cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel error'
 
+SPOTDL_SAVE=""
+
 validate-requirements () {
     if ! yq --version >/dev/null; then
         echo "yq not installed"
@@ -22,10 +24,6 @@ validate-requirements () {
         echo "ffmpeg not installed"
         exit 1
     fi
-}
-
-spotdl-details () {
-    cat "$AUDIOS_PATH/save.spotdl" | jq -rc '.songs | sort_by(.list_position)'
 }
 
 validate-inputs () {
@@ -86,44 +84,27 @@ compute-audiosha () {
     audiosha=$(shasum $AUDIOS_PATH/*.wav | shasum | sed -nE 's/([a-zA-Z0-9]+) .*/\1/p')
 }
 
-download-playlist-if-needed () {
-    if [[ -z "$PLAYLIST_URL" ]]; then
-        return
-    fi
-
-    echo "Downloading playlist..."
-    cd "$AUDIOS_PATH"
-    spotdl \
-        --output "track_{isrc}.{output-ext}" \
-        --format wav \
-        --save-file "$AUDIOS_PATH/save.spotdl" \
-        sync "$PLAYLIST_URL" \
-        --audio youtube-music youtube \
-        || exit 1
-    cd "$CWD"
+fetch-spotdl-details () {
+    SPOTDL_SAVE="$AUDIOS_PATH/save.spotdl"
+    spotdl save "$PLAYLIST_URL" --save-file "$SPOTDL_SAVE" || exit 1
 }
 
-setup-audiocache () {
-    compute-audiosha || exit 1
-    echo "Audio files hash: $audiosha"
-
-    audiocache="$AUDIOS_PATH/$cachedir/$audiosha"
-    audiofile="$audiocache/combined.wav"
-
-    # Create cache dir if it does not exist
-    mkdir -p "$audiocache"
-
-    # Cleanup previous caches from non-matching hashes
-    find "$AUDIOS_PATH/$cachedir" -path "$AUDIOS_PATH/$cachedir/*" ! -path "*/$audiosha*" -delete
+spotdl-details () {
+    jq -rc '.songs | sort_by(.list_position)' "$SPOTDL_SAVE" || exit 1
 }
 
-list-audiofiles () {
-    # add files to array
-    files=()
-    while IFS='' read -r file || [[ -n "$file" ]]; do
-        files+=("$file")
-    done <<< "$(find "$AUDIOS_PATH" -name '*.wav' ! -path */${cachedir}/*)"
+generate-chapters() {
+    chapter_dur=0
+    for song in songs
+        if chapter_max < chapter_dur + song.dur
+
+
+    download next chapter times two
+    generate images
+    output chapter video
 }
+
+
 
 parse-track-details () {
     if [[ -f "$audiocache/track-details.json" ]]; then
