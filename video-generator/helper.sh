@@ -90,7 +90,7 @@ download-playlist-if-needed () {
     echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
     spotdl \
-        --output "{list-position}_{isrc}.{output-ext}" \
+        --output "track_{isrc}.{output-ext}" \
         --format wav \
         --save-file "$AUDIOS_PATH/save.spotdl" \
         sync "$PLAYLIST_URL" \
@@ -131,10 +131,10 @@ parse-track-details () {
 
     # parse durations into a file
     json_details='[]'
-    order=0
+    parsed=0
     for file in "${files[@]}"; do
-        isrc="${file##*_}"
-        isrc="${isrc%.*}"
+        isrc=$(basename -s ".wav" "$file")
+        isrc=${isrc#track_}
 
         if [[ -z "$isrc" ]]; then
             echo "Failed to parse ISRC from $file"
@@ -145,6 +145,7 @@ parse-track-details () {
         title=$(printf '%s' "$spotdl_details" | jq -rc '.name')
         artist=$(printf '%s' "$spotdl_details" | jq -rc '.artist')
         cover_url=$(printf '%s' "${spotdl_details}" | jq -rc '.cover_url')
+        position=$(printf '%s' "${spotdl_details}" | jq -rc '.list_position')
 
         file_details=$(ffprobe -i "$file" 2>&1)
         duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
@@ -152,7 +153,7 @@ parse-track-details () {
 
         file_details=$(jq -rc --null-input \
             --arg file "$file" \
-            --argjson order "$order" \
+            --argjson position "$position" \
             --arg title "$title" \
             --arg artist "$artist" \
             --arg coverurl "$cover_url" \
@@ -160,7 +161,7 @@ parse-track-details () {
             --arg duration_ms "$duration_ms" \
             '{
                 file :$file,
-                order: $order,
+                position: $position,
                 title: $title,
                 artist: $artist,
                 coverurl: $coverurl,
@@ -171,14 +172,14 @@ parse-track-details () {
         json_details=$(jq -rc --null-input \
             --argjson all "$json_details" \
             --argjson next "$file_details" \
-            '$all | . += [$next]')
+            '$all | . += [$next] | sort_by(.position)')
 
-        order=$(( order + 1 ))
+        parsed=$(( parsed + 1 ))
 
-        printf '\rParsing metadata: %d/%d songs %s' $(( 10#$order )) "${#files[@]}" '             '
+        printf '\rParsing metadata: %d/%d songs %s' $(( 10#$parsed )) "${#files[@]}" '             '
     done
 
-    printf '%s\n' "$json_details" > "$audiocache/track-details.json"
+    printf '%s' "$json_details" | jq '.' > "$audiocache/track-details.json"
 
     # group songs into chapters and add details to file
     chapters='[]'
@@ -211,7 +212,7 @@ parse-track-details () {
         fi
     done
 
-    printf '%s\n' "$chapters" > "$audiocache/chapter-details.json"
+    printf '%s\n' "$chapters" | jq '.' > "$audiocache/chapter-details.json"
 
     echo "done. took ${SECONDS}s"
 }
@@ -261,7 +262,7 @@ generate-track-videos () {
             artist=$(printf '%s\n' "$track" | jq -rc '.artist')
             cover_url=$(printf '%s\n' "$track" | jq -rc '.coverurl')
 
-            order=$(printf '%s\n' "$track" | jq -rc '.order')
+            order=$(printf '%s\n' "$track" | jq -rc '.position')
             order=$(printf '%05d' "$order")
             file=$(printf '%s\n' "$track" | jq -rc '.file')
             file=$(printf '%q' "$file")
