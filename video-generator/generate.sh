@@ -2,6 +2,8 @@
 
 set -e
 
+validate-requirements
+
 CWD=$(pwd)
 cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel warning'
