@@ -323,7 +323,7 @@ generate-track-videos () {
             echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
 
-        printf '\r%s\rcombining tracks for chapter %d' "$progresstext" "$chapter_count"
+        printf '\r%s\rCombining tracks for chapter %d' "$(blankline)" "$chapter_count"
 
         # combine all track files into the chapter file
         chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
@@ -335,7 +335,7 @@ generate-track-videos () {
             -tune stillimage \
             -y "$chapter_file"
 
-        printf '\rChapter %d saved to %s                         \n' "$chapter_count" "$chapter_file"
+        printf '\r%s\rChapter %d saved to %s                         \n' "$(blankline)" "$chapter_count" "$chapter_file"
 
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
