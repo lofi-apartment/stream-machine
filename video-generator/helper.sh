@@ -96,15 +96,14 @@ spotdl-details () {
 generate-chapters() {
     chapter_dur=0
     for song in songs
-        if chapter_max < chapter_dur + song.dur
+        if chapter_dur + song.dur > chapter_max
+            close chapter
 
 
     download next chapter times two
     generate images
     output chapter video
 }
-
-
 
 parse-track-details () {
     if [[ -f "$audiocache/track-details.json" ]]; then
