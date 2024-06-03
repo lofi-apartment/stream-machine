@@ -140,6 +140,7 @@ parse-track-details () {
     # parse durations into a file
     json_details='[]'
     parsed=0
+    all_details=$(spotdl-details)
     for file in "${files[@]}"; do
         isrc=$(basename -s ".wav" "$file")
         isrc=${isrc#track_}
@@ -149,34 +150,23 @@ parse-track-details () {
             exit 1
         fi
 
-        spotdl_song=$(spotdl-details | jq --arg isrc "$isrc" -rc 'map(select(.isrc == $isrc)) | first')
-        title=$(printf '%s' "$spotdl_song" | jq -rc '.name')
-        artist=$(printf '%s' "$spotdl_song" | jq -rc '.artist')
-        cover_url=$(printf '%s' "$spotdl_song" | jq -rc '.cover_url')
-        position=$(printf '%s' "$spotdl_song" | jq -rc '.list_position')
+        spotdl_song=$(jq -nrc --argjson all "$all_details" --arg isrc "$isrc" '$all | map(select(.isrc == $isrc)) | first')
         duration_s=$(printf '%s' "$spotdl_song" | jq -rc '.duration')
         duration_ms=$(( duration_s * 1000 ))
 
-        file_details=$(jq -rc --null-input \
-            --arg file "$file" \
-            --argjson position "$position" \
-            --arg title "$title" \
-            --arg artist "$artist" \
-            --arg coverurl "$cover_url" \
-            --arg duration_ms "$duration_ms" \
-            '{
-                file :$file,
-                position: $position,
-                title: $title,
-                artist: $artist,
-                coverurl: $coverurl,
-                duration_ms: $duration_ms
-            }')
-
-        json_details=$(jq -rc --null-input \
+        json_details=$(jq -nrc \
             --argjson all "$json_details" \
-            --argjson next "$file_details" \
-            '$all | . += [$next] | sort_by(.position)')
+            --argjson song "$spotdl_song" \
+            --arg file "$file" \
+            --argjson duration_ms "$duration_ms" \
+            '$all | . += [{
+                file : $file,
+                position: $song.list_position,
+                title: $song.name,
+                artist: $song.artist,
+                coverurl: $song.cover_url,
+                duration_ms: $duration_ms
+            }] | sort_by(.position)')
 
         parsed=$(( parsed + 1 ))
 
@@ -257,15 +247,18 @@ generate-track-videos () {
         echo "" > "$TMP/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track_count=$(( track_count + 1 ))
-            progresstext=$(printf '\r%s\rSong %d of %d (chapter %d of %d) (%d%%)' \
-                "$(blankline)" "$track_count" "$tracks_count" "$chapter_count" "$total_chapters" "$(( (track_count * 100) / tracks_count ))")
+            success_percent=$(printf 'scale=1;%d*100/%d' "$track_count" "$tracks_count" | bc)
+            progresstext=$(printf '\r%s\rTrack %d of %d (chapter %d of %d) (%s%%)' \
+                "$(blankline)" "$track_count" "$tracks_count" "$chapter_count" "$total_chapters" "$success_percent")
 
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
 
             if [[ -z "$track" ]] || [[ "$track" == "null" ]]; then
-                echo "Failed to determine details for track $file"
+                printf '%s: Failed to determine details for track %s\n' "$progresstext" "$file"
                 exit 1
             fi
+
+            printf '%s: processing ' "$progresstext"
 
             title=$(printf '%s\n' "$track" | jq -rc '.title')
             artist=$(printf '%s\n' "$track" | jq -rc '.artist')
@@ -277,12 +270,15 @@ generate-track-videos () {
             file=$(printf '%q' "$file")
 
             # parse duration
+            printf '%s: parsing duration ' "$progresstext"
             duration=$(ffprobe -i "$file" 2>&1 | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
 
             # download cover image
+            printf '%s: downloading album art ' "$progresstext"
             curl -s "${cover_url}" -o "$chapter_dir/tracks/cover-$order.png"
 
             # generate text
+            printf '%s: generating overlay ' "$progresstext"
             python3 "$(dirname "${BASH_SOURCE[0]}")/textimg.py" \
                 -t "${title}" \
                 -a "${artist}" \
@@ -291,6 +287,7 @@ generate-track-videos () {
                 -o "$chapter_dir/tracks/txt-$order.png"
 
             # encode the starter tile
+            printf '%s: generating background ' "$progresstext"
             $FFMPEG \
                 -re \
                 -i "$TMP/pre-video.mp4" \
@@ -308,6 +305,7 @@ generate-track-videos () {
 
             # loop text tile to full duration, using stream copy
             # also add audio at this point
+            printf '%s: adding track audio ' "$progresstext"
             echo "file $chapter_dir/tracks/$order.mp4" >> "$TMP/chapter-files.txt"
             $FFMPEG \
                 -stream_loop -1 \
@@ -323,7 +321,8 @@ generate-track-videos () {
             echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
 
-        printf '\r%s\rCombining tracks for chapter %d' "$(blankline)" "$chapter_count"
+        chapter_tracks_count=$(printf '%s' "$chapter" | jq -rc '.files | length')
+        printf '\r%s\rChapter %d: combining %d tracks ' "$(blankline)" "$chapter_tracks_count" "$chapter_count"
 
         # combine all track files into the chapter file
         chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
