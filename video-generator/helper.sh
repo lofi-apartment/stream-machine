@@ -27,12 +27,12 @@ validate-requirements () {
 validate-inputs () {
     if [[ -n "$PLAYLIST_PATH" ]]; then
         PLAYLIST_DATA=$(cat "$PLAYLIST_PATH/playlist.yml")
-        TEXT_COLOR=$(printf '%s' "$PLAYLIST_DATA" | yq -rc '.text_color')
+        TEXT_COLOR=$(printf '%s' "$PLAYLIST_DATA" | yq -r '.text_color')
         if [[ -z "$TEXT_COLOR" ]] || [[ "$TEXT_COLOR" == "null" ]]; then
             TEXT_COLOR="white"
         fi
 
-        PLAYLIST_ID=$(printf '%s' "$PLAYLIST_DATA" | yq -rc '.playlist_id')
+        PLAYLIST_ID=$(printf '%s' "$PLAYLIST_DATA" | yq -r '.playlist_id')
         if [[ -n "$PLAYLIST_ID" ]] && [[ "$PLAYLIST_ID" != "null" ]]; then
             playlist_url="https://open.spotify.com/playlist/${PLAYLIST_ID}"
             PLAYLIST_URL=${PLAYLIST_URL-$playlist_url}
@@ -40,7 +40,7 @@ validate-inputs () {
 
         AUDIOS_PATH="${AUDIOS_PATH-${PLAYLIST_PATH}/audio}"
 
-        bg_file=$(printf '%s' "$PLAYLIST_DATA" | yq -rc '.bg_file')
+        bg_file=$(printf '%s' "$PLAYLIST_DATA" | yq -r '.bg_file')
         BG_FILE="${PLAYLIST_PATH}/${bg_file}"
 
         OUTPUT_DIR="${OUTPUT_DIR-${PLAYLIST_PATH}/video}"
@@ -91,7 +91,6 @@ download-playlist-if-needed () {
     cd "$AUDIOS_PATH"
     spotdl \
         --output "{list-position}_{isrc}.{output-ext}" \
-        --threads 2 \
         --format wav \
         --save-file "$AUDIOS_PATH/save.spotdl" \
         sync "$PLAYLIST_URL" \
