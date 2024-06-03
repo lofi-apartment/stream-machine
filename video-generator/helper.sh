@@ -321,18 +321,19 @@ generate-track-videos () {
         printf '%s: combining tracks' "$progresstext"
 
         # combine all track files into the chapter file
+        chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
         $FFMPEG \
             -safe 0 \
             -f concat \
             -i "$TMP/chapter-files.txt" \
             -c copy \
             -tune stillimage \
-            -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
+            -y "$chapter_file"
 
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
 
-        printf '%s: complete!                         \n' "$progresstext"
+        printf '%s: complete! Saved to %s                         \n' "$progresstext" "$chapter_file"
     done
 
     exit 0
