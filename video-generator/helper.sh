@@ -121,40 +121,6 @@ list-audiofiles () {
     done <<< "$(find "$AUDIOS_PATH" -name '*.wav' ! -path */${cachedir}/*)"
 }
 
-combine-audiofiles () {
-    durationfile="$audiocache/duration.txt"
-
-    if [[ -f "$audiofile" && -f "$durationfile" ]]; then
-        echo "Using cached result"
-        DURATION=$(cat "$durationfile")
-        return
-    else
-        echo -n "Combining ${#files[@]} audio files... "
-        SECONDS=0
-        cd "$audiocache"
-
-        sox $(printf "%q " "${files[@]}") "${audiofile}"
-
-        DURATION=$(sox "${audiofile}" -n stat 2>&1 \
-            | sed -nE 's,Length \(seconds\): +([0-9.]+),\1,p')
-
-        cd "$CWD"
-
-        echo "done. took ${SECONDS} seconds"
-    fi
-
-    echo "$DURATION" > "$durationfile"
-
-    DURATION_ROUNDED_UP=$(printf '%.0f' "$DURATION")
-    DURATION_ROUNDED_UP=$((DURATION_ROUNDED_UP+1))
-
-    MINS=$((DURATION_ROUNDED_UP/60))
-    MINS=$(printf '%.0f' "$MINS")
-    HOURS=$(( MINS / 60 ))
-    HOURS=$(printf '%.1f' "$HOURS")
-    echo "Total duration: ${HOURS}h"
-}
-
 parse-track-details () {
     if [[ -f "$audiocache/track-details.json" ]]; then
         echo "Using cached details"
