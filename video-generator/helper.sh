@@ -108,7 +108,7 @@ cleanup_videos () {
     done
 }
 
-download-playlist-if-needed () {
+download-playlist () {
     if [[ "$SKIP_SYNC" = "true" ]]; then
         echo 'detected `--skip-sync` flag, skipping playlist sync'
         return
@@ -117,7 +117,6 @@ download-playlist-if-needed () {
         return
     fi
 
-    echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
     spotdl \
         --output "track_{isrc}.{output-ext}" \
@@ -266,8 +265,8 @@ generate-track-videos () {
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track_count=$(( track_count + 1 ))
             success_percent=$(printf 'scale=1;%d*100/%d\n' "$(( track_count - 1 ))" "$tracks_count" | bc)
-            progresstext=$(printf '\r%s\rTrack %d of %d (chapter %d of %d) (%s%%)' \
-                "$(blankline)" "$track_count" "$tracks_count" "$chapter_count" "$total_chapters" "$success_percent")
+            progresstext=$(printf '\r%s\rChapter %d of %d, track %d of %d (%s%%)' \
+                "$(blankline)" "$chapter_count" "$total_chapters" "$track_count" "$tracks_count" "$success_percent")
 
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
 

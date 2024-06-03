@@ -17,15 +17,16 @@ trap cleanuptmp EXIT
 
 setuptmp
 
-download-playlist-if-needed
-
-echo "Checking for changes..."
+header Downloading playlist
 setup-audiocache
+download-playlist
 
-echo "Parsing track data..."
+# header "Checking for changes"
+
+header "Parsing track data"
 list-audiofiles
 parse-track-details
 
-echo "Generating video..."
+header "Generating video"
 cleanup_videos
 generate-background

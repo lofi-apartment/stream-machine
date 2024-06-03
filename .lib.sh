@@ -66,3 +66,15 @@ duration_from_ms () {
 blankline () {
     printf ' %.0s' $(seq 1 $(tput cols))
 }
+
+divider () {
+    printf '_%.0s' $(seq 1 $(tput cols)) | sed -nE 's/_/-/gp'
+    echo ""
+}
+
+header () {
+    test "$called" = true && echo "" || called=true
+    divider
+    echo "$@"
+    divider
+}
