@@ -72,6 +72,24 @@ validate-inputs () {
     mkdir -p "$AUDIOS_PATH"
 }
 
+parse-options () {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --skip-sync)
+                SKIP_SYNC=true
+                shift
+                ;;
+            -*|--*)
+                echo "Unknown option $1"
+                exit 1
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+}
+
 setuptmp () {
     TMP="$OUTPUT_DIR/$EPOCH/tmp"
     mkdir -p "$TMP"
@@ -87,7 +105,11 @@ compute-audiosha () {
 }
 
 download-playlist-if-needed () {
-    if [[ -z "$PLAYLIST_URL" ]]; then
+    if [[ "$SKIP_SYNC" = "true" ]]; then
+        echo 'detected `--skip-sync` flag, skipping playlist sync'
+        return
+    elif [[ -z "$PLAYLIST_URL" ]]; then
+        echo 'No `PLAYLIST_URL` specified, skipping playlist sync'
         return
     fi
 

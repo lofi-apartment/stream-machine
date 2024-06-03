@@ -11,6 +11,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/helper.sh"
 
 validate-requirements
 validate-inputs
+parse-options "$@"
 
 trap cleanuptmp EXIT
 
