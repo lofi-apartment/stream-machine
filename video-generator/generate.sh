@@ -2,7 +2,6 @@
 
 set -e
 
-validate-requirements
 
 CWD=$(pwd)
 cachedir=".lofigenerator"
@@ -10,6 +9,7 @@ FFMPEG='ffmpeg -hide_banner -loglevel warning'
 
 source "$(dirname "${BASH_SOURCE[0]}")/helper.sh"
 
+validate-requirements
 validate-inputs
 
 trap cleanuptmp EXIT
