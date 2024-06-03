@@ -16,7 +16,11 @@ title_fill=(r, g, b, 255)
 artist_fill=(r, g, b, 128)
 
 font_size = 100
-fnt = ImageFont.truetype(args.font, size=font_size)
+fnt = None
+try:
+    fnt = ImageFont.truetype(args.font, size=font_size)
+except:
+    fnt = ImageFont.load_default(font_size)
 
 height_bbox = fnt.getbbox('!Tlyg')
 title_bbox = fnt.getbbox(args.title)
