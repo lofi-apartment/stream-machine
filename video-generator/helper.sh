@@ -12,13 +12,13 @@ cachedir=".lofigenerator"
 FFMPEG='ffmpeg -hide_banner -loglevel error'
 
 validate-requirements () {
-    if ! yq -V > /dev/null; then
+    if ! yq -V >/dev/null; then
         echo "yq not installed"
         exit 1
-    elif ! spotdl --version > /dev/null; then
+    elif ! spotdl --version >/dev/null; then
         echo "spotdl not installed"
         exit 1
-    elif ! ffmpeg -version > /dev/null 2>&1; then
+    elif ! ffmpeg -version >/dev/null 2>&1; then
         echo "ffmpeg not installed"
         exit 1
     fi
