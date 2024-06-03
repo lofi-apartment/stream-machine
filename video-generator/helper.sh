@@ -24,6 +24,10 @@ validate-requirements () {
     fi
 }
 
+spotdl-details () {
+    cat "$AUDIOS_PATH/save.spotdl" | jq -rc '.songs | sort_by(.list_position)'
+}
+
 validate-inputs () {
     if [[ -n "$PLAYLIST_PATH" ]]; then
         PLAYLIST_DATA=$(cat "$PLAYLIST_PATH/playlist.yml")
@@ -141,11 +145,11 @@ parse-track-details () {
             exit 1
         fi
 
-        spotdl_details=$(cat "$AUDIOS_PATH/save.spotdl" | jq --arg isrc "$isrc" -rc '.songs | map(select(.isrc == $isrc)) | first')
-        title=$(printf '%s' "$spotdl_details" | jq -rc '.name')
-        artist=$(printf '%s' "$spotdl_details" | jq -rc '.artist')
-        cover_url=$(printf '%s' "${spotdl_details}" | jq -rc '.cover_url')
-        position=$(printf '%s' "${spotdl_details}" | jq -rc '.list_position')
+        spotdl_song=$(spotdl-details | jq --arg isrc "$isrc" -rc 'map(select(.isrc == $isrc)) | first')
+        title=$(printf '%s' "$spotdl_song" | jq -rc '.name')
+        artist=$(printf '%s' "$spotdl_song" | jq -rc '.artist')
+        cover_url=$(printf '%s' "$spotdl_song" | jq -rc '.cover_url')
+        position=$(printf '%s' "$spotdl_song" | jq -rc '.list_position')
 
         file_details=$(ffprobe -i "$file" 2>&1)
         duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
