@@ -1,11 +1,15 @@
 #!/bin/bash
 
+if [[ "$DEBUG" = "true" ]]; then
+    set -x
+fi
+
 source "$(dirname "${BASH_SOURCE[0]}")/../.lib.sh"
 
 EPOCH=$(date '+%Y-%m-%d-%H-%M')
 CWD=$(pwd)
 cachedir=".lofigenerator"
-FFMPEG='ffmpeg -hide_banner -loglevel error -threads 4'
+FFMPEG='ffmpeg -hide_banner -loglevel error'
 
 validate-inputs () {
     if [[ -n "$PLAYLIST_PATH" ]]; then
@@ -13,6 +17,8 @@ validate-inputs () {
         BG_FILE="${BG_FILE-${PLAYLIST_PATH}/bg.jpg}"
         OUTPUT_DIR="${OUTPUT_DIR-${PLAYLIST_PATH}/video}"
     fi
+
+    TEXT_COLOR="${TEXT_COLOR-white}"
 
     if [[ -z "$AUDIOS_PATH" ]]; then
         echo "Command failed: AUDIOS_PATH unset"
@@ -30,6 +36,8 @@ validate-inputs () {
         echo "Command failed: BOLD_FONT unset"
         exit 1
     fi
+
+    mkdir -p "$AUDIOS_PATH"
 }
 
 setuptmp () {
@@ -54,7 +62,7 @@ download-playlist-if-needed () {
     echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
     spotdl \
-        --output "{list-position}.{output-ext}" \
+        --output "{list-position}_{isrc}.{output-ext}" \
         --threads 2 \
         --format wav \
         --save-file "$AUDIOS_PATH/save.spotdl" \
@@ -132,9 +140,20 @@ parse-track-details () {
     json_details='[]'
     order=0
     for file in "${files[@]}"; do
+        isrc="${file##*_}"
+        isrc="${isrc%.*}"
+
+        if [[ -z "$isrc" ]]; then
+            echo "Failed to parse ISRC from $file"
+            exit 1
+        fi
+
+        spotdl_details=$(cat "$AUDIOS_PATH/save.spotdl" | jq --arg isrc "$isrc" -rc '.songs | map(select(.isrc == $isrc)) | first')
+        title=$(printf '%s' "$spotdl_details" | jq -rc '.name')
+        artist=$(printf '%s' "$spotdl_details" | jq -rc '.artist')
+        cover_url=$(printf '%s' "${spotdl_details}" | jq -rc '.cover_url')
+
         file_details=$(ffprobe -i "$file" 2>&1)
-        title=$(printf '%s' "$file_details" | sed -nE 's/ +title +: +(.+)/\1/p' | head -1)
-        artist=$(printf '%s' "$file_details" | sed -nE 's/ +artist +: +(.+)/\1/p' | head -1)
         duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
         duration_ms=$(parse_duration "$duration_ff")
 
@@ -143,6 +162,7 @@ parse-track-details () {
             --argjson order "$order" \
             --arg title "$title" \
             --arg artist "$artist" \
+            --arg coverurl "$cover_url" \
             --arg duration "$duration_ff" \
             --arg duration_ms "$duration_ms" \
             '{
@@ -150,6 +170,7 @@ parse-track-details () {
                 order: $order,
                 title: $title,
                 artist: $artist,
+                coverurl: $coverurl,
                 duration: $duration,
                 duration_ms: $duration_ms
             }')
@@ -244,35 +265,40 @@ generate-track-videos () {
             fi
 
             title=$(printf '%s\n' "$track" | jq -rc '.title')
-            title=$(printf '%q' "$title")
             artist=$(printf '%s\n' "$track" | jq -rc '.artist')
-            artist=$(printf '%q' "$artist")
+            cover_url=$(printf '%s\n' "$track" | jq -rc '.coverurl')
+
             order=$(printf '%s\n' "$track" | jq -rc '.order')
             order=$(printf '%05d' "$order")
             file=$(printf '%s\n' "$track" | jq -rc '.file')
             file=$(printf '%q' "$file")
             duration=$(printf '%s\n' "$track" | jq -rc '.duration')
 
-            drawtext="drawtext=text=\'$title\'"
-            drawtext="${drawtext}:fontcolor='white'"
-            drawtext="${drawtext}:fontfile=\'$BOLD_FONT\'"
-            drawtext="${drawtext}:fontsize=32"
-            drawtext="${drawtext}:x=40"
-            drawtext="${drawtext}:y=40"
-            drawtext="${drawtext},drawtext=text=\'by $artist\'"
-            drawtext="${drawtext}:fontcolor='white'"
-            drawtext="${drawtext}:fontfile=\'$REGULAR_FONT\'"
-            drawtext="${drawtext}:fontsize=24"
-            drawtext="${drawtext}:x=40"
-            drawtext="${drawtext}:y=40+40"
+            # download cover image
+            curl -s "${cover_url}" -o "$chapter_dir/tracks/cover-$order.png"
 
-            # encode the starter tile with text over it
+            # generate text
+            python3 "$(dirname "${BASH_SOURCE[0]}")/textimg.py" \
+                -t "${title}" \
+                -a "${artist}" \
+                -f "$REGULAR_FONT" \
+                -c "$TEXT_COLOR" \
+                -o "$chapter_dir/tracks/txt-$order.png"
+
+            # encode the starter tile
             $FFMPEG \
                 -re \
                 -i "$TMP/pre-video.mp4" \
+                -i "$chapter_dir/tracks/txt-$order.png" \
+                -i "$chapter_dir/tracks/cover-$order.png" \
                 -c:v libx264 -c:a copy \
+                -tune stillimage \
                 -pix_fmt yuv420p \
-                -vf "${drawtext}" \
+                -filter_complex \
+                    '[1:v]scale=w=-1:h=80 [txt];
+                     [2:v]scale=w=-1:h=80 [cvr];
+                     [0:v][cvr] overlay=40:40 [withcvr];
+                     [withcvr][txt] overlay=135:45' \
                 -y "$chapter_dir/tracks/pre-$order.mp4"
 
             # loop text tile to full duration, using stream copy
@@ -283,10 +309,9 @@ generate-track-videos () {
                 -t "$duration" \
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
-                -c copy \
-                -channel_layout stereo \
+                -tune stillimage \
+                -c:v copy -c:a aac \
                 -map 0:v -map 1:a \
-                -channel_layout stereo \
                 -y "$chapter_dir/tracks/$order.mp4"
 
             printf '%s: %d/%d songs %s' "$progresstext" $(( 10#$order + 1 )) "${#files[@]}"
@@ -296,17 +321,19 @@ generate-track-videos () {
         printf '%s: combining tracks' "$progresstext"
 
         # combine all track files into the chapter file
+        chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
         $FFMPEG \
             -safe 0 \
             -f concat \
             -i "$TMP/chapter-files.txt" \
             -c copy \
-            -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
+            -tune stillimage \
+            -y "$chapter_file"
 
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
 
-        printf '%s: complete!                         \n' "$progresstext"
+        printf '%s: complete! Saved to %s                         \n' "$progresstext" "$chapter_file"
     done
 
     exit 0
