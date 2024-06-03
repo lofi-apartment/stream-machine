@@ -13,6 +13,8 @@ if [[ -z "$FILES" ]]; then
 fi
 
 if [[ -d "$FILES" ]]; then
+    lock_dir "$FILES" || exit 1
+    trap 'unlock_dir "$FILES"' EXIT
     files=($FILES/*.mp4)
 else
     IFS=','
@@ -25,6 +27,11 @@ else
             exit 1
         fi
     done
+fi
+
+if [[ "${#files[@]}" = "0" ]]; then
+    echo "No files to stream"
+    exit 2
 fi
 
 parse_now () {
@@ -45,16 +52,16 @@ parse_offset () {
     json_details='[]'
     start_ms=0
     for i in "${!files[@]}"; do
-        file="${files[$i]}"
+        file="${files[i]}"
         duration_ff=$(ffprobe "$file" 2>&1 | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
         file_duration_ms=$(parse_duration "$duration_ff")
         end_ms=$(( start_ms + file_duration_ms ))
 
-        json_details=$(jq -rc --null-input \
+        json_details=$(jq -nrc \
             --argjson jd "$json_details" \
-            --argjson start "$start_ms" \
-            --argjson end "$end_ms" \
-            '$jd | . += [{ start: $start, end: $end }]')
+            --argjson s "$start_ms" \
+            --argjson e "$end_ms" \
+            '$jd | . += [{ start: $s, end: $e }]')
 
         start_ms="$end_ms"
     done
@@ -69,8 +76,8 @@ parse_offset () {
     for i in "${!files[@]}"; do
         start=$(echo "${json_details}" | jq -rc ".[$i].start")
         end=$(echo "${json_details}" | jq -rc ".[$i].end")
-        if (( start <= offset_ms )) && (( offset_ms <= end )); then
-            offset_ms="$(( offset_ms - start ))"
+        if (( "$start" <= "$offset_ms" )) && (( "$offset_ms" <= "$end" )); then
+            offset_ms=$(( offset_ms - start ))
             offset_index="$i"
             break
         fi
@@ -81,13 +88,12 @@ parse_offset () {
 
 run_stream () {
     parse_offset
-
     echo "Beginning with video index: $offset_index"
     echo "Using start offset: $offset"
 
     for i in "${!files[@]}"; do
         ss="00:00:00.00"
-        if (( i < offset_index )); then
+        if (( "$i" < "$offset_index" )); then
             continue
         elif [[ "$i" == "$offset_index" ]]; then
             ss="$offset"
@@ -114,6 +120,6 @@ run_stream () {
 }
 
 retries=0
-while $(( retries < 3 )); do
+while (( retries < 3 )); do
     run_stream || retries=$(( retries + 1 ))
 done

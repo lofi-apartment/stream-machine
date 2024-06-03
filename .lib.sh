@@ -16,10 +16,12 @@ lock_dir () {
     fi
 
     date > $lockfile
+    echo "locked $lockfile"
 }
 
 unlock_dir () {
     rm -f "$1/.lock"
+    echo "unlocked $1/.lock"
 }
 
 parseint() {
@@ -58,7 +60,7 @@ duration_from_ms () {
 
     offset_cs=$(( (offset_ms - done_ms) / ms_per_cs ))
 
-    offset=$(printf '%02d:%02d:%02d.%02d' "${offset_h}" "${offset_m}" "${offset_s}" "${offset_cs}")
+    printf '%02d:%02d:%02d.%02d' "${offset_h}" "${offset_m}" "${offset_s}" "${offset_cs}"
 }
 
 blankline () {
