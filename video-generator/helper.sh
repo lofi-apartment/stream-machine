@@ -158,10 +158,8 @@ parse-track-details () {
         artist=$(printf '%s' "$spotdl_song" | jq -rc '.artist')
         cover_url=$(printf '%s' "$spotdl_song" | jq -rc '.cover_url')
         position=$(printf '%s' "$spotdl_song" | jq -rc '.list_position')
-
-        file_details=$(ffprobe -i "$file" 2>&1)
-        duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
-        duration_ms=$(parse_duration "$duration_ff")
+        duration_s=$(printf '%s' "$spotdl_song" | jq -rc '.duration')
+        duration_ms=$(( duration_s * 1000 ))
 
         file_details=$(jq -rc --null-input \
             --arg file "$file" \
@@ -169,7 +167,6 @@ parse-track-details () {
             --arg title "$title" \
             --arg artist "$artist" \
             --arg coverurl "$cover_url" \
-            --arg duration "$duration_ff" \
             --arg duration_ms "$duration_ms" \
             '{
                 file :$file,
@@ -177,7 +174,6 @@ parse-track-details () {
                 title: $title,
                 artist: $artist,
                 coverurl: $coverurl,
-                duration: $duration,
                 duration_ms: $duration_ms
             }')
 
@@ -259,7 +255,7 @@ generate-track-videos () {
     chapter_count=1
     track_count=0
     for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
-        progresstext=$(printf '                    \r%s' "Chapter ${chapter_count}/${total_chapters}")
+        progresstext=$(printf '\r%s\r%s' "$(blankline)" "Chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
         chapter_dir="$TMP/chapters/$chapter_count"
         mkdir -p "$chapter_dir"
@@ -281,7 +277,9 @@ generate-track-videos () {
             order=$(printf '%05d' "$order")
             file=$(printf '%s\n' "$track" | jq -rc '.file')
             file=$(printf '%q' "$file")
-            duration=$(printf '%s\n' "$track" | jq -rc '.duration')
+
+            # parse duration
+            duration=$(ffprobe -i "$file" 2>&1 | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
 
             # download cover image
             curl -s "${cover_url}" -o "$chapter_dir/tracks/cover-$order.png"
@@ -327,7 +325,7 @@ generate-track-videos () {
             echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
 
-        printf '%s: combining tracks' "$progresstext"
+        printf '%s: combining tracks ' "$progresstext"
 
         # combine all track files into the chapter file
         chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
