@@ -182,9 +182,9 @@ parse-track-details () {
 
         parsed=$(( parsed + 1 ))
 
-        progress="$(( 10#$parsed ))"
+        progress=$(( 10#$parsed ))
         total="${#files[@]}"
-        percent=$(printf 'scale=1;%d*100/%d' "$progress" "$total" | bc)
+        percent=$(printf 'scale=1; %d*100/%d' "$progress" "$total" | bc)
         printf '\r%s\rParsing metadata: %d/%d songs (%s%%) ' "$(blankline)" "$progress" "$total" "$percent"
     done
 
