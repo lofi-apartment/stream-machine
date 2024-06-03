@@ -340,7 +340,7 @@ generate-track-videos () {
         done
 
         chapter_tracks_count=$(printf '%s' "$chapter" | jq -rc '.files | length')
-        printf '\r%s\rChapter %d: combining %d tracks ' "$(blankline)" "$chapter_tracks_count" "$chapter_count"
+        printf '\r%s\rChapter %d: combining %d tracks ' "$(blankline)" "$chapter_count" "$chapter_tracks_count"
 
         # combine all track files into the chapter file
         chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
