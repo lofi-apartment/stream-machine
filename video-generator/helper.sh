@@ -100,6 +100,14 @@ cleanuptmp () {
     exit
 }
 
+cleanup_videos () {
+    video_dirs=($(ls -td $OUTPUT_DIR/*/))
+    for dir in "${video_dirs[@]:2}"; do
+        test -f "$dir/.lock" && continue
+        rm -rf "$dir"
+    done
+}
+
 download-playlist-if-needed () {
     if [[ "$SKIP_SYNC" = "true" ]]; then
         echo 'detected `--skip-sync` flag, skipping playlist sync'
@@ -339,6 +347,9 @@ generate-track-videos () {
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
     done
+
+    # Cleanup old videos on success
+    cleanup_videos
 
     exit 0
 }
