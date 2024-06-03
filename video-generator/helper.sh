@@ -188,6 +188,9 @@ parse-track-details () {
     printf '%s' "$json_details" | jq '.' > "$audiocache/track-details.json"
 
     # group songs into chapters and add details to file
+
+
+    printf '\r%s\rParsing metadata: grouping songs into chapters ' "$(blankline)"
     chapters='[]'
     chapter_max_ms=$(( 30 * ms_per_m ))
     chapter_index=0
@@ -259,7 +262,7 @@ generate-track-videos () {
         echo "" > "$TMP/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track_count=$(( track_count + 1 ))
-            success_percent=$(printf 'scale=1;%d*100/%d' "$track_count" "$tracks_count" | bc)
+            success_percent=$(printf 'scale=1;%d*100/%d' "$(( track_count - 1 ))" "$tracks_count" | bc)
             progresstext=$(printf '\r%s\rTrack %d of %d (chapter %d of %d) (%s%%)' \
                 "$(blankline)" "$track_count" "$tracks_count" "$chapter_count" "$total_chapters" "$success_percent")
 
