@@ -292,6 +292,7 @@ generate-track-videos () {
                 -i "$chapter_dir/tracks/txt-$order.png" \
                 -i "$chapter_dir/tracks/cover-$order.png" \
                 -c:v libx264 -c:a copy \
+                -tune stillimage \
                 -pix_fmt yuv420p \
                 -filter_complex \
                     '[1:v]scale=w=-1:h=80 [txt];
@@ -308,6 +309,7 @@ generate-track-videos () {
                 -t "$duration" \
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
+                -tune stillimage \
                 -c:v copy -c:a aac \
                 -map 0:v -map 1:a \
                 -y "$chapter_dir/tracks/$order.mp4"
@@ -324,6 +326,7 @@ generate-track-videos () {
             -f concat \
             -i "$TMP/chapter-files.txt" \
             -c copy \
+            -tune stillimage \
             -y $(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
 
         rm -rf "$chapter_dir"
