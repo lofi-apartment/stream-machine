@@ -62,7 +62,7 @@ download-playlist-if-needed () {
     echo "Downloading playlist..."
     cd "$AUDIOS_PATH"
     spotdl \
-        --output "{list-position}.{output-ext}" \
+        --output "{list-position}_{isrc}.{output-ext}" \
         --threads 2 \
         --format wav \
         --save-file "$AUDIOS_PATH/save.spotdl" \
@@ -140,15 +140,22 @@ parse-track-details () {
     json_details='[]'
     order=0
     for file in "${files[@]}"; do
+        isrc="${file##*_}"
+        isrc="${isrc%.*}"
+
+        if [[ -z "$isrc" ]]; then
+            echo "Failed to parse ISRC from $file"
+            exit 1
+        fi
+
+        spotdl_details=$(cat "$AUDIOS_PATH/save.spotdl" | jq --arg isrc "$isrc" -rc '.songs | map(select(.isrc == $isrc)) | first')
+        title=$(printf '%s' "$spotdl_details" | jq -rc '.name')
+        artist=$(printf '%s' "$spotdl_details" | jq -rc '.artist')
+        cover_url=$(printf '%s' "${spotdl_details}" | jq -rc '.cover_url')
+
         file_details=$(ffprobe -i "$file" 2>&1)
-        title=$(printf '%s' "$file_details" | sed -nE 's/ +title +: +(.+)/\1/p' | head -1)
-        artist=$(printf '%s' "$file_details" | sed -nE 's/ +artist +: +(.+)/\1/p' | head -1)
         duration_ff=$(printf '%s' "$file_details" | sed -nE 's/ +Duration: ([:.0-9]+),.+/\1/p' | head -1)
         duration_ms=$(parse_duration "$duration_ff")
-
-        tsrc=$(printf '%s' "$file_details" | sed -nE 's/ +TSRC +: +([a-zA-Z0-9]+)/\1/p' | head -1)
-        spotdl_details=$(cat "$AUDIOS_PATH/save.spotdl" | jq --arg isrc "$tsrc" -rc '.songs | map(select(.isrc == $isrc)) | first')
-        cover_url=$(printf '%s' "${spotdl_details}" | jq -rc '.cover_url')
 
         file_details=$(jq -rc --null-input \
             --arg file "$file" \
