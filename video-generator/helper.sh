@@ -148,6 +148,7 @@ parse-track-details () {
     # parse durations into a file
     json_details='[]'
     parsed=0
+    total="${#files[@]}"
     for file in "${files[@]}"; do
         isrc=$(basename -s ".wav" "$file")
         isrc=${isrc#track_}
@@ -181,7 +182,6 @@ parse-track-details () {
             }] | sort_by(.position)')
 
         parsed=$(( parsed + 1 ))
-        total="${#files[@]}"
         percent=$(printf 'scale=1;%d*100/%d' "$parsed" "$total" | bc)
         printf '\r%s\rParsing metadata: %d/%d songs (%s%%) ' "$(blankline)" "$parsed" "$total" "$percent"
     done
