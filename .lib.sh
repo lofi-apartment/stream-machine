@@ -5,6 +5,23 @@ ms_per_s=1000
 ms_per_m=$(( 60 * ms_per_s ))
 ms_per_h=$(( 60 * ms_per_m ))
 
+lock_dir () {
+    lockfile="$1/.lock"
+    if ! [[ -d "$1" ]]; then
+        echo "Cannot lock non-existent directory: $1"
+        exit 1
+    elif [[ -f "$lockfile" ]]; then
+        echo "Cannot lock directory, lockfile already exists: $lockfile"
+        exit 1
+    fi
+
+    date > $lockfile
+}
+
+unlock_dir () {
+    rm -f "$1/.lock"
+}
+
 parseint() {
     test -n "$1" \
         && printf '%d' "$(( 10#$1 ))" \
