@@ -182,7 +182,10 @@ parse-track-details () {
 
         parsed=$(( parsed + 1 ))
 
-        printf '\r%s\rParsing metadata: %d/%d songs ' "$(blankline)" $(( 10#$parsed )) "${#files[@]}"
+        progress="$(( 10#$parsed ))"
+        total="${#files[@]}"
+        percent=$(printf 'scale=1;%d*100/%d' "$progress" "$total" | bc)
+        printf '\r%s\rParsing metadata: %d/%d songs (%s%%) ' "$(blankline)" "$progress" "$total" "$percent"
     done
 
     printf '%s' "$json_details" | jq '.' > "$audiocache/track-details.json"
