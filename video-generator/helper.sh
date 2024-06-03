@@ -182,15 +182,16 @@ parse-track-details () {
 
         parsed=$(( parsed + 1 ))
         percent=$(printf 'scale=1;%d*100/%d\n' "$parsed" "$total" | bc)
-        printf '\r%s\rParsing metadata: %d/%d songs (%s%%) ' "$(blankline)" "$parsed" "$total" "$percent"
+        printf '\r%s\rParsing track metadata: %d/%d songs (%s%%) ' "$(blankline)" "$parsed" "$total" "$percent"
     done
 
     printf '%s' "$json_details" | jq '.' > "$audiocache/track-details.json"
 
+    printf '\r%s\r%s\n' "$(blankline)" "Parsing track metadata: done. took ${SECONDS}s"
+
     # group songs into chapters and add details to file
-
-
-    printf '\r%s\rParsing metadata: grouping songs into chapters ' "$(blankline)"
+    SECONDS=0
+    chapterprogress=$(printf '\r%s\rGrouping tracks into chapters' "$(blankline)")
     chapters='[]'
     chapter_max_ms=$(( 30 * ms_per_m ))
     chapter_index=0
@@ -220,12 +221,12 @@ parse-track-details () {
                 '$all | .[$i].files += [$file.file]')
         fi
         percent=$(printf 'scale=1;%d*100/%d\n' "$(( i + 1))" "$total" | bc)
-        printf '\r%s\rParsing metadata: grouping songs into chapters (%s%%) ' "$(blankline)" "$parsed" "$total" "$percent"
+        printf '%s: %s%% ' "$chapterprogress" "$percent"
     done
 
     printf '%s\n' "$chapters" | jq '.' > "$audiocache/chapter-details.json"
 
-    printf '\r%s\r%s\n' "$(blankline)" "Parsing metadata: done. took ${SECONDS}s"
+    printf '%s: %s\n' "$chapterprogress" "done. took ${SECONDS}s"
 }
 
 generate-background () {
