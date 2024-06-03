@@ -220,6 +220,8 @@ parse-track-details () {
                 --argjson file "$file_details" \
                 '$all | .[$i].files += [$file.file]')
         fi
+        percent=$(printf 'scale=1;%d*100/%d\n' "$(( i + 1))" "$total" | bc)
+        printf '\r%s\rParsing metadata: grouping songs into chapters (%s%%) ' "$(blankline)" "$parsed" "$total" "$percent"
     done
 
     printf '%s\n' "$chapters" | jq '.' > "$audiocache/chapter-details.json"
