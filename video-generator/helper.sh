@@ -90,6 +90,10 @@ parse-options () {
     done
 }
 
+blankline () {
+    printf ' %.0s' $(seq 1 $(tput cols))
+}
+
 setuptmp () {
     TMP="$OUTPUT_DIR/$EPOCH/tmp"
     mkdir -p "$TMP"
@@ -98,10 +102,6 @@ setuptmp () {
 cleanuptmp () {
     find "$TMP" -delete
     exit
-}
-
-compute-audiosha () {
-    audiosha=$(shasum $AUDIOS_PATH/*.wav | shasum | sed -nE 's/([a-zA-Z0-9]+) .*/\1/p')
 }
 
 download-playlist-if-needed () {
@@ -126,17 +126,8 @@ download-playlist-if-needed () {
 }
 
 setup-audiocache () {
-    compute-audiosha || exit 1
-    echo "Audio files hash: $audiosha"
-
-    audiocache="$AUDIOS_PATH/$cachedir/$audiosha"
-    audiofile="$audiocache/combined.wav"
-
-    # Create cache dir if it does not exist
+    audiocache="$AUDIOS_PATH/$cachedir"
     mkdir -p "$audiocache"
-
-    # Cleanup previous caches from non-matching hashes
-    find "$AUDIOS_PATH/$cachedir" -path "$AUDIOS_PATH/$cachedir/*" ! -path "*/$audiosha*" -delete
 }
 
 list-audiofiles () {
@@ -148,11 +139,6 @@ list-audiofiles () {
 }
 
 parse-track-details () {
-    if [[ -f "$audiocache/track-details.json" ]]; then
-        echo "Using cached details"
-        return
-    fi
-
     SECONDS=0
 
     # parse durations into a file
@@ -202,7 +188,7 @@ parse-track-details () {
 
         parsed=$(( parsed + 1 ))
 
-        printf '\rParsing metadata: %d/%d songs %s' $(( 10#$parsed )) "${#files[@]}" '             '
+        printf '\r%s\rParsing metadata: %d/%d songs ' "$(blankline)" $(( 10#$parsed )) "${#files[@]}"
     done
 
     printf '%s' "$json_details" | jq '.' > "$audiocache/track-details.json"
@@ -240,7 +226,7 @@ parse-track-details () {
 
     printf '%s\n' "$chapters" | jq '.' > "$audiocache/chapter-details.json"
 
-    echo "done. took ${SECONDS}s"
+    printf '\r%s\r%s\n' "$(blankline)" "Parsing metadata: done. took ${SECONDS}s"
 }
 
 generate-background () {
@@ -268,8 +254,10 @@ generate-track-videos () {
         "$TMP/pre-video.mp4"
 
     track_details=$(cat "$audiocache/track-details.json")
+    tracks_count=$(jq -rc 'length' "$audiocache/track-details.json")
     total_chapters=$(cat "$audiocache/chapter-details.json" | jq -rc '. | length')
     chapter_count=1
+    track_count=0
     for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
         progresstext=$(printf '                    \r%s' "Chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
@@ -278,6 +266,7 @@ generate-track-videos () {
         mkdir -p "$chapter_dir/tracks"
         echo "" > "$TMP/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
+            track_count=$(( track_count + 1 ))
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
             if [[ -z "$track" ]] || [[ "$track" == "null" ]]; then
                 echo "Failed to determine details for track $file"
@@ -334,7 +323,7 @@ generate-track-videos () {
                 -map 0:v -map 1:a \
                 -y "$chapter_dir/tracks/$order.mp4"
 
-            printf '%s: %d/%d songs %s' "$progresstext" $(( 10#$order + 1 )) "${#files[@]}"
+            printf '%s: song %d of %d (%d%%) ' "$progresstext" "$track_count" "$tracks_count" $(( (track_count * 100) / tracks_count ))
             echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
 
