@@ -182,7 +182,7 @@ parse-track-details () {
             }] | sort_by(.position)')
 
         parsed=$(( parsed + 1 ))
-        percent=$(printf 'scale=1;%d*100/%d' "$parsed" "$total" | bc)
+        percent=$(printf 'scale=1;%d*100/%d\n' "$parsed" "$total" | bc)
         printf '\r%s\rParsing metadata: %d/%d songs (%s%%) ' "$(blankline)" "$parsed" "$total" "$percent"
     done
 
@@ -263,7 +263,7 @@ generate-track-videos () {
         echo "" > "$TMP/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track_count=$(( track_count + 1 ))
-            success_percent=$(printf 'scale=1;%d*100/%d' "$(( track_count - 1 ))" "$tracks_count" | bc)
+            success_percent=$(printf 'scale=1;%d*100/%d\n' "$(( track_count - 1 ))" "$tracks_count" | bc)
             progresstext=$(printf '\r%s\rTrack %d of %d (chapter %d of %d) (%s%%)' \
                 "$(blankline)" "$track_count" "$tracks_count" "$chapter_count" "$total_chapters" "$success_percent")
 
