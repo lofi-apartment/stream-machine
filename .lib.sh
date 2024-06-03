@@ -43,3 +43,7 @@ duration_from_ms () {
 
     offset=$(printf '%02d:%02d:%02d.%02d' "${offset_h}" "${offset_m}" "${offset_s}" "${offset_cs}")
 }
+
+blankline () {
+    printf ' %.0s' $(seq 1 $(tput cols))
+}

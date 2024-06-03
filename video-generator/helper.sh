@@ -90,10 +90,6 @@ parse-options () {
     done
 }
 
-blankline () {
-    printf ' %.0s' $(seq 1 $(tput cols))
-}
-
 setuptmp () {
     TMP="$OUTPUT_DIR/$EPOCH/tmp"
     mkdir -p "$TMP"
@@ -226,7 +222,6 @@ parse-track-details () {
 }
 
 generate-background () {
-    padding="                  "
     SECONDS=0
     mkdir "$TMP/tracks"
 
@@ -255,7 +250,6 @@ generate-track-videos () {
     chapter_count=1
     track_count=0
     for encodedChapter in $(cat "$audiocache/chapter-details.json" | jq -r '.[] | @base64'); do
-        progresstext=$(printf '\r%s\r%s' "$(blankline)" "Chapter ${chapter_count}/${total_chapters}")
         chapter=$(printf '%s\n' "$encodedChapter" | base64 --decode)
         chapter_dir="$TMP/chapters/$chapter_count"
         mkdir -p "$chapter_dir"
@@ -263,7 +257,11 @@ generate-track-videos () {
         echo "" > "$TMP/chapter-files.txt"
         for file in $(echo "$chapter" | jq -rc '.files[]'); do
             track_count=$(( track_count + 1 ))
+            progresstext=$(printf '\r%s\rSong %d of %d (chapter %d of %d) (%d%%)' \
+                "$(blankline)" "$track_count" "$tracks_count" "$chapter_count" "$total_chapters" "$(( (track_count * 100) / tracks_count ))")
+
             track=$(printf '%s' "$track_details" | jq --arg file "$file" '. | map(select(.file == $file)) | first')
+
             if [[ -z "$track" ]] || [[ "$track" == "null" ]]; then
                 echo "Failed to determine details for track $file"
                 exit 1
@@ -317,15 +315,15 @@ generate-track-videos () {
                 -i "$chapter_dir/tracks/pre-$order.mp4" \
                 -i "$file" \
                 -tune stillimage \
-                -c:v copy -c:a aac \
+                -c copy \
                 -map 0:v -map 1:a \
                 -y "$chapter_dir/tracks/$order.mp4"
 
-            printf '%s: song %d of %d (%d%%) ' "$progresstext" "$track_count" "$tracks_count" $(( (track_count * 100) / tracks_count ))
+            printf '%s: done ' "$progresstext"
             echo "file '$chapter_dir/tracks/$order.mp4'" >> "$TMP/track-files.txt"
         done
 
-        printf '%s: combining tracks ' "$progresstext"
+        printf '\r%s\rcombining tracks for chapter %d' "$progresstext" "$chapter_count"
 
         # combine all track files into the chapter file
         chapter_file=$(printf '%s/%s/chapter_%05d.mp4' "$OUTPUT_DIR" "$EPOCH" "$chapter_count")
@@ -337,10 +335,10 @@ generate-track-videos () {
             -tune stillimage \
             -y "$chapter_file"
 
+        printf '\rChapter %d saved to %s                         \n' "$chapter_count" "$chapter_file"
+
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
-
-        printf '%s: complete! Saved to %s                         \n' "$progresstext" "$chapter_file"
     done
 
     exit 0
