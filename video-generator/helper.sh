@@ -26,8 +26,23 @@ validate-requirements () {
 
 validate-inputs () {
     if [[ -n "$PLAYLIST_PATH" ]]; then
+        PLAYLIST_DATA=$(cat "$PLAYLIST_PATH/playlist.yml")
+        TEXT_COLOR=$(printf '%s' "$PLAYLIST_DATA" | yq '.text_color')
+        if [[ -z "$TEXT_COLOR" ]] || [[ "$TEXT_COLOR" == "null" ]]; then
+            TEXT_COLOR="white"
+        fi
+
+        PLAYLIST_ID=$(printf '%s' "$PLAYLIST_DATA" | yq '.playlist_id')
+        if [[ -n "$PLAYLIST_ID" ]] && [[ "$PLAYLIST_ID" != "null" ]]; then
+            playlist_url="https://open.spotify.com/playlist/${PLAYLIST_ID}"
+            PLAYLIST_URL="${PLAYLIST_URL-$playlist_url}"
+        fi
+
         AUDIOS_PATH="${AUDIOS_PATH-${PLAYLIST_PATH}/audio}"
-        BG_FILE="${BG_FILE-${PLAYLIST_PATH}/bg.jpg}"
+
+        bg_file=$(printf '%s' "$PLAYLIST_DATA" | yq '.bg_file')
+        BG_FILE="${PLAYLIST_PATH}/${bg_file}"
+
         OUTPUT_DIR="${OUTPUT_DIR-${PLAYLIST_PATH}/video}"
     fi
 
