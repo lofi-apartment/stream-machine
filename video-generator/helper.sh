@@ -98,7 +98,7 @@ download-playlist-if-needed () {
         --format wav \
         --save-file "$AUDIOS_PATH/save.spotdl" \
         sync "$PLAYLIST_URL" \
-        --audio youtube-music soundcloud youtube \
+        --audio youtube-music youtube \
         || exit 1
     cd "$CWD"
 }
