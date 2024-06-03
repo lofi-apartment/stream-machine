@@ -148,7 +148,6 @@ parse-track-details () {
     # parse durations into a file
     json_details='[]'
     parsed=0
-    all_details=$(spotdl-details)
     for file in "${files[@]}"; do
         isrc=$(basename -s ".wav" "$file")
         isrc=${isrc#track_}
@@ -158,7 +157,12 @@ parse-track-details () {
             exit 1
         fi
 
-        spotdl_song=$(jq -nrc --argjson all "$all_details" --arg isrc "$isrc" '$all | map(select(.isrc == $isrc)) | first')
+        spotdl_song=$(spotdl-details | jq -rc --arg isrc "$isrc" 'map(select(.isrc == $isrc)) | first')
+        if [[ -z "$spotdl_song" ]] || [[ "$spotdl_song" = "null" ]]; then
+            echo "Failed to detect song details"
+            exit 1
+        fi
+
         duration_s=$(printf '%s' "$spotdl_song" | jq -rc '.duration')
         duration_ms=$(( duration_s * 1000 ))
 
@@ -347,9 +351,6 @@ generate-track-videos () {
         rm -rf "$chapter_dir"
         chapter_count=$(( chapter_count + 1 ))
     done
-
-    # Cleanup old videos on success
-    cleanup_videos
 
     exit 0
 }

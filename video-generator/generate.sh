@@ -27,4 +27,5 @@ list-audiofiles
 parse-track-details
 
 echo "Generating video..."
+cleanup_videos
 generate-background
