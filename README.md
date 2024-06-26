@@ -3,6 +3,10 @@
 A set of tools for generating simple looping videos from Spotify playlists,
 and streaming them live to YouTube.
 
+Uses:
+* [SpotDL](https://spotdl.readthedocs.io/en/latest/) for downloading Spotify content
+* [ffmpeg](https://ffmpeg.org/) for constructing videos and streaming to YouTube
+
 ## Installing
 
 ```bash
