@@ -7,8 +7,8 @@ and streaming them live to YouTube.
 
 ```bash
 # Either clone the repo
-git clone git@github.com:lofi-apartment/playlists.git
+git clone git@github.com:lofi-apartment/stream-machine.git
 
 # Or add it as a submodule to your project
-git submodule add git@github.com:lofi-apartment/playlists.git
+git submodule add git@github.com:lofi-apartment/stream-machine.git
 ```
